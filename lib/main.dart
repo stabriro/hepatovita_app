@@ -4,11 +4,12 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'app/di.dart';
 import 'data/app_database.dart';
-import 'features/labs/domain/entities/lab_alert_entity.dart' as domain_alert;
 import 'features/labs/domain/entities/lab_entity.dart';
 import 'features/labs/domain/entities/lab_history_entity.dart' as domain;
 import 'features/labs/domain/usecases/evaluate_lab_goal_usecase.dart';
 import 'features/labs/domain/usecases/generate_lab_alerts_usecase.dart';
+import 'features/labs/presentation/presenters/lab_alert_presenter.dart';
+import 'features/labs/presentation/views/labs_tab_view.dart';
 import 'features/labs/presentation/viewmodels/labs_view_model.dart';
 import 'l10n/app_localizations.dart';
 import 'services/local_notification_service.dart';
@@ -238,6 +239,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final Set<String> _shownCriticalAlertKeys = <String>{};
   final LabsViewModel _labsViewModel = AppDi.provideLabsViewModel();
   final EvaluateLabGoalUseCase _evaluateLabGoal = EvaluateLabGoalUseCase();
+  final LabAlertPresenter _labAlertPresenter = const LabAlertPresenter();
   late final GenerateLabAlertsUseCase _generateLabAlertsUseCase =
       GenerateLabAlertsUseCase(_evaluateLabGoal);
 
@@ -347,14 +349,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
     final l10n = AppLocalizations.of(context);
     final criticalAlerts = _generateLabAlerts(l10n)
-        .where((a) => a.severity == _LabAlertSeverity.critical)
+      .where((a) => a.severity == LabAlertUiSeverity.critical)
         .toList();
 
     if (criticalAlerts.isEmpty) {
       return;
     }
 
-    _LabAlert? nextAlert;
+    LabAlertUiModel? nextAlert;
     String? alertKey;
     for (final alert in criticalAlerts) {
       final key = '${alert.metric}|${alert.message}';
@@ -574,8 +576,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
   }
 
-  List<_LabAlert> _generateLabAlerts(AppLocalizations l10n) {
-    final domainLabs = _labs.map(_toLabEntity).toList();
+  Map<String, List<domain.LabHistoryEntity>> _toDomainHistoryByMetric() {
     final domainHistoryByMetric = <String, List<domain.LabHistoryEntity>>{};
     _labHistoryByMetric.forEach((metric, entries) {
       domainHistoryByMetric[metric] = entries
@@ -592,148 +593,23 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           )
           .toList();
     });
+    return domainHistoryByMetric;
+  }
+
+  List<LabAlertUiModel> _generateLabAlerts(AppLocalizations l10n) {
+    final domainLabs = _labs.map(_toLabEntity).toList();
+    final domainHistoryByMetric = _toDomainHistoryByMetric();
 
     final domainAlerts = _generateLabAlertsUseCase(
       labs: domainLabs,
       historyByMetric: domainHistoryByMetric,
     );
 
-    return domainAlerts.map((a) {
-      switch (a.code) {
-        case 'OFF_TARGET_WORSENING':
-          final lab = _labs.firstWhere((l) => l.metric == a.metric);
-          return _LabAlert(
-            metric: a.metric,
-            severity: _mapSeverity(a.severity),
-            title: l10n.tr('alert_worsening_title', args: {'metric': a.metric}),
-            message: l10n.tr('alert_worsening_message', args: {'value': '${lab.value}', 'unit': lab.unit}),
-          );
-        case 'OFF_TARGET':
-          return _LabAlert(
-            metric: a.metric,
-            severity: _mapSeverity(a.severity),
-            title: l10n.tr('alert_off_target_title', args: {'metric': a.metric}),
-            message: l10n.tr('alert_off_target_message'),
-          );
-        case 'TARGET_UNKNOWN':
-          return _LabAlert(
-            metric: a.metric,
-            severity: _mapSeverity(a.severity),
-            title: l10n.tr('alert_unknown_target_title', args: {'metric': a.metric}),
-            message: l10n.tr('alert_unknown_target_message'),
-          );
-        case 'ON_TARGET_IMPROVING':
-          return _LabAlert(
-            metric: a.metric,
-            severity: _mapSeverity(a.severity),
-            title: l10n.tr('alert_good_title', args: {'metric': a.metric}),
-            message: l10n.tr('alert_good_message'),
-          );
-        default:
-          return _LabAlert(
-            metric: a.metric,
-            severity: _LabAlertSeverity.info,
-            title: a.metric,
-            message: a.code,
-          );
-      }
-    }).toList();
-  }
-
-  _LabAlertSeverity _mapSeverity(domain_alert.LabAlertSeverity severity) {
-    switch (severity) {
-      case domain_alert.LabAlertSeverity.critical:
-        return _LabAlertSeverity.critical;
-      case domain_alert.LabAlertSeverity.warning:
-        return _LabAlertSeverity.warning;
-      case domain_alert.LabAlertSeverity.info:
-        return _LabAlertSeverity.info;
-    }
-  }
-
-  Widget _buildAlertsPanel(bool isAr) {
-    final l10n = AppLocalizations.of(context);
-    final alerts = _generateLabAlerts(l10n);
-    if (alerts.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.green.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.green.shade200),
-        ),
-        child: Text(
-          l10n.tr('alerts_none'),
-          style: TextStyle(fontSize: 11, color: Colors.green.shade900, fontWeight: FontWeight.w600),
-        ),
-      );
-    }
-
-    return Column(
-      children: alerts.map((alert) {
-        final style = _alertVisuals(alert.severity);
-        return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: style.background,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: style.border),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(style.icon, color: style.foreground, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      alert.title,
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: style.foreground),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      alert.message,
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF334155)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+    return _labAlertPresenter.mapToUi(
+      l10n: l10n,
+      domainAlerts: domainAlerts,
+      labs: domainLabs,
     );
-  }
-
-  _AlertVisuals _alertVisuals(_LabAlertSeverity severity) {
-    switch (severity) {
-      case _LabAlertSeverity.critical:
-        return _AlertVisuals(
-          icon: Icons.warning_amber_rounded,
-          background: const Color(0xFFFFF1F2),
-          border: const Color(0xFFFDA4AF),
-          foreground: const Color(0xFFB91C1C),
-        );
-      case _LabAlertSeverity.warning:
-        return _AlertVisuals(
-          icon: Icons.error_outline_rounded,
-          background: const Color(0xFFFFF7ED),
-          border: const Color(0xFFFDBA74),
-          foreground: const Color(0xFF9A3412),
-        );
-      case _LabAlertSeverity.info:
-        return _AlertVisuals(
-          icon: Icons.check_circle_outline_rounded,
-          background: const Color(0xFFECFEFF),
-          border: const Color(0xFF67E8F9),
-          foreground: const Color(0xFF155E75),
-        );
-    }
   }
 
   Future<void> _upsertLabEntry({int? index}) async {
@@ -1777,271 +1653,53 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
-  Widget _buildLabTrendCard(LabEntry lab, bool isAr) {
-    final l10n = AppLocalizations.of(context);
-    final history = _labHistoryByMetric[lab.metric] ?? <LabHistoryEntry>[];
-    final values = history.map((e) => e.value).toList();
+  List<LabsTabLabItem> _toLabsTabLabItems() {
+    return _labs
+        .map(
+          (lab) => LabsTabLabItem(
+            metric: lab.metric,
+            value: lab.value,
+            unit: lab.unit,
+            refRange: lab.refRange,
+            status: lab.status,
+            target: lab.target,
+            progressVal: lab.progressVal,
+            targetLabel: _targetLabel(lab.value, lab.refRange),
+            trendLabel: _trendLabel(lab),
+          ),
+        )
+        .toList();
+  }
 
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blueGrey.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _targetLabel(lab.value, lab.refRange) == 'On Target' ? Colors.green.shade50 : Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _targetLabel(lab.value, lab.refRange),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: _targetLabel(lab.value, lab.refRange) == 'On Target' ? Colors.green.shade800 : Colors.orange.shade800,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _trendLabel(lab) == 'Improving'
-                      ? Colors.blue.shade50
-                      : (_trendLabel(lab) == 'Worsening' ? Colors.red.shade50 : Colors.grey.shade200),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _trendLabel(lab),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: _trendLabel(lab) == 'Improving'
-                        ? Colors.blue.shade800
-                        : (_trendLabel(lab) == 'Worsening' ? Colors.red.shade800 : Colors.grey.shade700),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                l10n.tr('trend_history'),
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: Color(0xFF1E293B)),
-              ),
-              Text(
-                l10n.tr('records_count', args: {'count': '${history.length}'}),
-                style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (values.isEmpty)
-            Text(
-              l10n.tr('no_history'),
-              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-            )
-          else
-            SizedBox(
-              height: 60,
-              width: double.infinity,
-              child: CustomPaint(
-                painter: _MiniTrendPainter(
-                  values: values,
-                  lineColor: const Color(0xFF0284C7),
-                ),
-              ),
+  Map<String, List<LabsTabHistoryItem>> _toLabsTabHistoryByMetric() {
+    final uiHistoryByMetric = <String, List<LabsTabHistoryItem>>{};
+    _labHistoryByMetric.forEach((metric, entries) {
+      uiHistoryByMetric[metric] = entries
+          .map(
+            (e) => LabsTabHistoryItem(
+              value: e.value,
+              unit: e.unit,
+              date: e.date,
             ),
-          if (history.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                l10n.tr(
-                  'latest_value',
-                  args: {
-                    'value': '${history.last.value}',
-                    'unit': history.last.unit,
-                    'date': history.last.date,
-                  },
-                ),
-                style: const TextStyle(fontSize: 10, color: Color(0xFF475569)),
-              ),
-            ),
-        ],
-      ),
-    );
+          )
+          .toList();
+    });
+    return uiHistoryByMetric;
   }
 
   Widget _buildModernLabsTab(bool isAr) {
     final l10n = AppLocalizations.of(context);
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                isAr ? 'مركز الفحوصات والمؤشرات الحيوية' : 'Biomarker & Clinical Lab Hub',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
-              ),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.end,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _exportBackupFile,
-                      icon: const Icon(Icons.download_rounded),
-                      label: Text(l10n.tr('backup')),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _restoreBackupFile,
-                      icon: const Icon(Icons.upload_file_rounded),
-                      label: Text(l10n.tr('restore')),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () => _upsertLabEntry(),
-                      icon: const Icon(Icons.add_rounded),
-                      label: Text(l10n.tr('add_lab')),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1B3B2B),
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                l10n.tr('sqlite_backup_hint'),
-                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-              ),
-              const SizedBox(height: 8),
-              _buildAlertsPanel(isAr),
-              const SizedBox(height: 6),
-              const SizedBox(height: 4),
-              if (_labs.isEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Text(
-                    isAr ? 'لا توجد فحوصات بعد. أضف أول فحص.' : 'No labs yet. Add your first lab record.',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
-                  ),
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _labs.length,
-                  separatorBuilder: (_, __) => const Divider(height: 20),
-                  itemBuilder: (context, index) {
-                    final lab = _labs[index];
-                    final isNormal = lab.status == 'Normal';
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(child: Text(lab.metric, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: isNormal ? Colors.green.shade50 : Colors.amber.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: isNormal ? Colors.green.shade300 : Colors.amber.shade300),
-                                  ),
-                                  child: Text(
-                                    lab.status,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: isNormal ? Colors.green.shade900 : Colors.amber.shade900,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () => _upsertLabEntry(index: index),
-                                  icon: const Icon(Icons.edit_rounded, size: 18),
-                                  tooltip: 'Update lab',
-                                ),
-                                IconButton(
-                                  onPressed: () => _deleteLabEntry(index),
-                                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                  tooltip: 'Delete lab',
-                                ),
-                              ],
-                            )
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('${lab.value} ${lab.unit}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B))),
-                            Text(lab.refRange, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: lab.progressVal,
-                            minHeight: 6,
-                            backgroundColor: Colors.grey.shade200,
-                            color: isNormal ? Colors.green : Colors.amber.shade800,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(lab.target, style: const TextStyle(fontSize: 10, color: Colors.black54)),
-                        _buildLabTrendCard(lab, isAr),
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _addLabResult(lab),
-                            icon: const Icon(Icons.show_chart_rounded, size: 16),
-                            label: Text(isAr ? 'إضافة نتيجة' : 'Add Result'),
-                          ),
-                        )
-                      ],
-                    );
-                  },
-                )
-            ],
-          ),
-        )
-      ],
+    return LabsTabView(
+      isAr: isAr,
+      labs: _toLabsTabLabItems(),
+      historyByMetric: _toLabsTabHistoryByMetric(),
+      alerts: _generateLabAlerts(l10n),
+      onExportBackup: _exportBackupFile,
+      onRestoreBackup: _restoreBackupFile,
+      onAddLab: () => _upsertLabEntry(),
+      onEditLab: (index) => _upsertLabEntry(index: index),
+      onDeleteLab: _deleteLabEntry,
+      onAddResult: (index) => _addLabResult(_labs[index]),
     );
   }
 
@@ -2107,82 +1765,3 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 }
 
-class _MiniTrendPainter extends CustomPainter {
-  final List<double> values;
-  final Color lineColor;
-
-  _MiniTrendPainter({
-    required this.values,
-    required this.lineColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (values.isEmpty) {
-      return;
-    }
-
-    final paint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    final dotPaint = Paint()
-      ..color = lineColor
-      ..style = PaintingStyle.fill;
-
-    final minVal = values.reduce((a, b) => a < b ? a : b);
-    final maxVal = values.reduce((a, b) => a > b ? a : b);
-    final span = (maxVal - minVal) == 0 ? 1.0 : (maxVal - minVal);
-
-    final path = Path();
-    for (int i = 0; i < values.length; i++) {
-      final x = values.length == 1 ? size.width / 2 : (i / (values.length - 1)) * size.width;
-      final y = size.height - ((values[i] - minVal) / span) * size.height;
-
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-      canvas.drawCircle(Offset(x, y), 2.5, dotPaint);
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _MiniTrendPainter oldDelegate) {
-    return oldDelegate.values != values || oldDelegate.lineColor != lineColor;
-  }
-}
-
-enum _LabAlertSeverity { critical, warning, info }
-
-class _LabAlert {
-  final String metric;
-  final _LabAlertSeverity severity;
-  final String title;
-  final String message;
-
-  const _LabAlert({
-    required this.metric,
-    required this.severity,
-    required this.title,
-    required this.message,
-  });
-}
-
-class _AlertVisuals {
-  final IconData icon;
-  final Color background;
-  final Color border;
-  final Color foreground;
-
-  const _AlertVisuals({
-    required this.icon,
-    required this.background,
-    required this.border,
-    required this.foreground,
-  });
-}
