@@ -213,11 +213,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   final TextEditingController _mealSearchController = TextEditingController();
   Map<String, dynamic>? _analyzedResult;
+  Map<String, List<LabHistoryEntry>> _labHistoryByMetric = {};
 
   @override
   void initState() {
     super.initState();
     _loadPersistedState();
+    _loadLabHistory();
   }
 
   @override
@@ -241,6 +243,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _lowFatDay = snapshot.lowFatDay;
       _analyzedResult = snapshot.analyzedResult;
       _labs = snapshot.labs.map(LabEntry.fromMap).toList();
+    });
+  }
+
+  Future<void> _loadLabHistory() async {
+    final grouped = await AppDatabase.instance.getAllLabHistoryGrouped();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _labHistoryByMetric = grouped;
     });
   }
 
@@ -351,6 +363,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         final parsedValue = double.tryParse(valueController.text.trim()) ?? (existing?.value ?? 0);
         final progressPct = double.tryParse(progressController.text.trim()) ?? ((existing?.progressVal ?? 0.5) * 100);
         final clampedProgress = (progressPct / 100).clamp(0.0, 1.0);
+        final parsedDate = dateController.text.trim().isEmpty
+            ? (existing?.date ?? DateTime.now().toIso8601String().split('T').first)
+            : dateController.text.trim();
 
         final updated = LabEntry(
           id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
@@ -359,10 +374,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           unit: unitController.text.trim().isEmpty ? (existing?.unit ?? '') : unitController.text.trim(),
           refRange: refRangeController.text.trim().isEmpty ? (existing?.refRange ?? '') : refRangeController.text.trim(),
           status: editedStatus,
-          date: dateController.text.trim().isEmpty ? (existing?.date ?? DateTime.now().toIso8601String().split('T').first) : dateController.text.trim(),
+          date: parsedDate,
           target: targetController.text.trim().isEmpty ? (existing?.target ?? '') : targetController.text.trim(),
           progressVal: clampedProgress,
         );
+
+        final shouldStoreHistory = existing == null ||
+            existing.metric != updated.metric ||
+            existing.value != updated.value ||
+            existing.status != updated.status ||
+            existing.date != updated.date;
 
         setState(() {
           if (index == null) {
@@ -372,6 +393,20 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           }
         });
         await _savePersistedState();
+
+        if (shouldStoreHistory) {
+          await AppDatabase.instance.addLabHistoryEntry(
+            LabHistoryEntry(
+              metric: updated.metric,
+              value: updated.value,
+              unit: updated.unit,
+              status: updated.status,
+              date: parsedDate,
+              createdAt: DateTime.now().toIso8601String(),
+            ),
+          );
+          await _loadLabHistory();
+        }
       }
     }
 
@@ -408,11 +443,100 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
 
     if (confirm == true) {
+      final metric = lab.metric;
       setState(() {
         _labs.removeAt(index);
       });
       await _savePersistedState();
+      await AppDatabase.instance.deleteLabHistoryByMetric(metric);
+      await _loadLabHistory();
     }
+  }
+
+  Future<void> _addLabResult(LabEntry lab) async {
+    final valueController = TextEditingController(text: lab.value.toString());
+    final dateController = TextEditingController(text: DateTime.now().toIso8601String().split('T').first);
+    String editedStatus = lab.status;
+
+    final didSave = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text('Add Result: ${lab.metric}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: valueController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(labelText: 'Value (${lab.unit})'),
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                initialValue: editedStatus,
+                items: const [
+                  DropdownMenuItem(value: 'Normal', child: Text('Normal')),
+                  DropdownMenuItem(value: 'High', child: Text('High')),
+                  DropdownMenuItem(value: 'Low', child: Text('Low')),
+                ],
+                onChanged: (v) {
+                  if (v != null) editedStatus = v;
+                },
+                decoration: const InputDecoration(labelText: 'Status'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: dateController,
+                decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Save Result'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (didSave == true) {
+      final parsedValue = double.tryParse(valueController.text.trim()) ?? lab.value;
+      final parsedDate = dateController.text.trim().isEmpty ? DateTime.now().toIso8601String().split('T').first : dateController.text.trim();
+
+      await AppDatabase.instance.addLabHistoryEntry(
+        LabHistoryEntry(
+          metric: lab.metric,
+          value: parsedValue,
+          unit: lab.unit,
+          status: editedStatus,
+          date: parsedDate,
+          createdAt: DateTime.now().toIso8601String(),
+        ),
+      );
+
+      setState(() {
+        final index = _labs.indexWhere((e) => e.id == lab.id);
+        if (index != -1) {
+          _labs[index] = _labs[index].copyWith(
+            value: parsedValue,
+            status: editedStatus,
+            date: parsedDate,
+          );
+        }
+      });
+
+      await _savePersistedState();
+      await _loadLabHistory();
+    }
+
+    valueController.dispose();
+    dateController.dispose();
   }
 
   int _calculateScore() {
@@ -1243,6 +1367,66 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
+  Widget _buildLabTrendCard(LabEntry lab, bool isAr) {
+    final history = _labHistoryByMetric[lab.metric] ?? <LabHistoryEntry>[];
+    final values = history.map((e) => e.value).toList();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blueGrey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                isAr ? 'اتجاه الفحوصات' : 'Trend History',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: Color(0xFF1E293B)),
+              ),
+              Text(
+                isAr ? '${history.length} قياس' : '${history.length} records',
+                style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (values.isEmpty)
+            Text(
+              isAr ? 'لا يوجد تاريخ بعد. أضف نتيجة جديدة.' : 'No history yet. Add a new result.',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+            )
+          else
+            SizedBox(
+              height: 60,
+              width: double.infinity,
+              child: CustomPaint(
+                painter: _MiniTrendPainter(
+                  values: values,
+                  lineColor: const Color(0xFF0284C7),
+                ),
+              ),
+            ),
+          if (history.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                isAr
+                    ? 'آخر نتيجة: ${history.last.value} ${history.last.unit} في ${history.last.date}'
+                    : 'Latest: ${history.last.value} ${history.last.unit} on ${history.last.date}',
+                style: const TextStyle(fontSize: 10, color: Color(0xFF475569)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildModernLabsTab(bool isAr) {
     return Column(
       children: [
@@ -1358,6 +1542,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(lab.target, style: const TextStyle(fontSize: 10, color: Colors.black54)),
+                        _buildLabTrendCard(lab, isAr),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _addLabResult(lab),
+                            icon: const Icon(Icons.show_chart_rounded, size: 16),
+                            label: Text(isAr ? 'إضافة نتيجة' : 'Add Result'),
+                          ),
+                        )
                       ],
                     );
                   },
@@ -1428,5 +1622,55 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         ],
       ),
     );
+  }
+}
+
+class _MiniTrendPainter extends CustomPainter {
+  final List<double> values;
+  final Color lineColor;
+
+  _MiniTrendPainter({
+    required this.values,
+    required this.lineColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.isEmpty) {
+      return;
+    }
+
+    final paint = Paint()
+      ..color = lineColor
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final dotPaint = Paint()
+      ..color = lineColor
+      ..style = PaintingStyle.fill;
+
+    final minVal = values.reduce((a, b) => a < b ? a : b);
+    final maxVal = values.reduce((a, b) => a > b ? a : b);
+    final span = (maxVal - minVal) == 0 ? 1.0 : (maxVal - minVal);
+
+    final path = Path();
+    for (int i = 0; i < values.length; i++) {
+      final x = values.length == 1 ? size.width / 2 : (i / (values.length - 1)) * size.width;
+      final y = size.height - ((values[i] - minVal) / span) * size.height;
+
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+      canvas.drawCircle(Offset(x, y), 2.5, dotPaint);
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MiniTrendPainter oldDelegate) {
+    return oldDelegate.values != values || oldDelegate.lineColor != lineColor;
   }
 }

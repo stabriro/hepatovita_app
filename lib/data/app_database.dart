@@ -61,13 +61,57 @@ class AppSnapshot {
   }
 }
 
+class LabHistoryEntry {
+  final int? id;
+  final String metric;
+  final double value;
+  final String unit;
+  final String status;
+  final String date;
+  final String createdAt;
+
+  LabHistoryEntry({
+    this.id,
+    required this.metric,
+    required this.value,
+    required this.unit,
+    required this.status,
+    required this.date,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toDbMap() {
+    return {
+      'metric': metric,
+      'value': value,
+      'unit': unit,
+      'status': status,
+      'date': date,
+      'created_at': createdAt,
+    };
+  }
+
+  static LabHistoryEntry fromDbMap(Map<String, dynamic> map) {
+    return LabHistoryEntry(
+      id: (map['id'] as num?)?.toInt(),
+      metric: map['metric'] as String,
+      value: (map['value'] as num).toDouble(),
+      unit: map['unit'] as String,
+      status: map['status'] as String,
+      date: map['date'] as String,
+      createdAt: map['created_at'] as String,
+    );
+  }
+}
+
 class AppDatabase {
   AppDatabase._();
 
   static final AppDatabase instance = AppDatabase._();
   static const _dbName = 'hepatovita.db';
-  static const _dbVersion = 2;
+  static const _dbVersion = 3;
   static const _stateTable = 'app_state';
+  static const _labHistoryTable = 'lab_history';
 
   Database? _db;
 
@@ -99,12 +143,37 @@ class AppDatabase {
             updated_at TEXT NOT NULL
           )
         ''');
+
+        await db.execute('''
+          CREATE TABLE $_labHistoryTable (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            metric TEXT NOT NULL,
+            value REAL NOT NULL,
+            unit TEXT NOT NULL,
+            status TEXT NOT NULL,
+            date TEXT NOT NULL,
+            created_at TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute(
             "ALTER TABLE $_stateTable ADD COLUMN labs_json TEXT NOT NULL DEFAULT '[]'",
           );
+        }
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE $_labHistoryTable (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              metric TEXT NOT NULL,
+              value REAL NOT NULL,
+              unit TEXT NOT NULL,
+              status TEXT NOT NULL,
+              date TEXT NOT NULL,
+              created_at TEXT NOT NULL
+            )
+          ''');
         }
       },
     );
@@ -133,5 +202,34 @@ class AppDatabase {
     }
 
     return AppSnapshot.fromDbMap(rows.first);
+  }
+
+  Future<void> addLabHistoryEntry(LabHistoryEntry entry) async {
+    final db = await database;
+    await db.insert(_labHistoryTable, entry.toDbMap());
+  }
+
+  Future<Map<String, List<LabHistoryEntry>>> getAllLabHistoryGrouped() async {
+    final db = await database;
+    final rows = await db.query(
+      _labHistoryTable,
+      orderBy: 'metric ASC, date ASC, id ASC',
+    );
+
+    final grouped = <String, List<LabHistoryEntry>>{};
+    for (final row in rows) {
+      final entry = LabHistoryEntry.fromDbMap(row);
+      grouped.putIfAbsent(entry.metric, () => <LabHistoryEntry>[]).add(entry);
+    }
+    return grouped;
+  }
+
+  Future<void> deleteLabHistoryByMetric(String metric) async {
+    final db = await database;
+    await db.delete(
+      _labHistoryTable,
+      where: 'metric = ?',
+      whereArgs: [metric],
+    );
   }
 }
