@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
 import 'data/app_database.dart';
 
@@ -215,6 +216,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Map<String, dynamic>? _analyzedResult;
   Map<String, List<LabHistoryEntry>> _labHistoryByMetric = {};
 
+  static final RegExp _rangePattern = RegExp(r'(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)');
+  static final RegExp _ltPattern = RegExp(r'<\s*(-?\d+(?:\.\d+)?)');
+  static final RegExp _gtPattern = RegExp(r'>\s*(-?\d+(?:\.\d+)?)');
+
   @override
   void initState() {
     super.initState();
@@ -256,6 +261,92 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     });
   }
 
+  Future<void> _reloadAllData() async {
+    await _loadPersistedState();
+    await _loadLabHistory();
+  }
+
+  Future<void> _exportBackupFile() async {
+    final defaultFileName = 'hepatovita_backup_${DateTime.now().toIso8601String().split('T').first}.db';
+    final path = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save SQLite Backup',
+      fileName: defaultFileName,
+      type: FileType.custom,
+      allowedExtensions: ['db'],
+    );
+
+    if (path == null) {
+      return;
+    }
+
+    try {
+      final savedPath = await AppDatabase.instance.exportDatabaseTo(path);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Backup saved to $savedPath')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Backup failed: $e')),
+      );
+    }
+  }
+
+  Future<void> _restoreBackupFile() async {
+    final file = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['db'],
+      allowMultiple: false,
+    );
+
+    if (file == null || file.files.isEmpty || file.files.single.path == null) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Restore Backup?'),
+          content: const Text('This will replace current app data with the selected backup file.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Restore'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) {
+      return;
+    }
+
+    try {
+      await AppDatabase.instance.importDatabaseFrom(file.files.single.path!);
+      await _reloadAllData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Backup restored successfully.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Restore failed: $e')),
+      );
+    }
+  }
+
   Future<void> _savePersistedState() async {
     final snapshot = AppSnapshot(
       waterAmount: _waterAmount,
@@ -268,6 +359,98 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       labs: _labs.map((e) => e.toMap()).toList(),
     );
     await AppDatabase.instance.saveState(snapshot);
+  }
+
+  _GoalRange? _parseGoalRange(String refRange) {
+    final rangeMatch = _rangePattern.firstMatch(refRange);
+    if (rangeMatch != null) {
+      final min = double.tryParse(rangeMatch.group(1)!);
+      final max = double.tryParse(rangeMatch.group(2)!);
+      if (min != null && max != null) {
+        return _GoalRange.between(min: min, max: max);
+      }
+    }
+
+    final ltMatch = _ltPattern.firstMatch(refRange);
+    if (ltMatch != null) {
+      final threshold = double.tryParse(ltMatch.group(1)!);
+      if (threshold != null) {
+        return _GoalRange.upper(threshold: threshold);
+      }
+    }
+
+    final gtMatch = _gtPattern.firstMatch(refRange);
+    if (gtMatch != null) {
+      final threshold = double.tryParse(gtMatch.group(1)!);
+      if (threshold != null) {
+        return _GoalRange.lower(threshold: threshold);
+      }
+    }
+
+    return null;
+  }
+
+  String _autoStatusFromRange(double value, String refRange) {
+    final range = _parseGoalRange(refRange);
+    if (range == null) {
+      return 'Unknown';
+    }
+    if (range.isWithin(value)) {
+      return 'Normal';
+    }
+
+    if (range.type == _GoalRangeType.lower) {
+      return 'Low';
+    }
+    if (range.type == _GoalRangeType.upper) {
+      return 'High';
+    }
+
+    return value < range.min! ? 'Low' : 'High';
+  }
+
+  String _targetLabel(double value, String refRange) {
+    final range = _parseGoalRange(refRange);
+    if (range == null) {
+      return 'Target Unknown';
+    }
+    return range.isWithin(value) ? 'On Target' : 'Off Target';
+  }
+
+  double _distanceToTarget(double value, _GoalRange range) {
+    if (range.isWithin(value)) {
+      return 0;
+    }
+
+    switch (range.type) {
+      case _GoalRangeType.between:
+        return value < range.min! ? (range.min! - value) : (value - range.max!);
+      case _GoalRangeType.upper:
+        return value <= range.upper! ? 0 : (value - range.upper!);
+      case _GoalRangeType.lower:
+        return value >= range.lower! ? 0 : (range.lower! - value);
+    }
+  }
+
+  String _trendLabel(LabEntry lab) {
+    final range = _parseGoalRange(lab.refRange);
+    if (range == null) {
+      return 'No Trend';
+    }
+
+    final history = _labHistoryByMetric[lab.metric] ?? <LabHistoryEntry>[];
+    if (history.length < 2) {
+      return 'No Trend';
+    }
+
+    final firstDistance = _distanceToTarget(history.first.value, range);
+    final lastDistance = _distanceToTarget(history.last.value, range);
+    const epsilon = 0.0001;
+
+    if ((firstDistance - lastDistance).abs() <= epsilon) {
+      return 'Stable';
+    }
+    return lastDistance < firstDistance ? 'Improving' : 'Worsening';
   }
 
   Future<void> _upsertLabEntry({int? index}) async {
@@ -312,17 +495,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   decoration: const InputDecoration(labelText: 'Reference Range'),
                 ),
                 const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: editedStatus,
-                  items: const [
-                    DropdownMenuItem(value: 'Normal', child: Text('Normal')),
-                    DropdownMenuItem(value: 'High', child: Text('High')),
-                    DropdownMenuItem(value: 'Low', child: Text('Low')),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) editedStatus = v;
-                  },
-                  decoration: const InputDecoration(labelText: 'Status'),
+                Text(
+                  'Status is auto-calculated from reference range.',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -367,12 +542,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ? (existing?.date ?? DateTime.now().toIso8601String().split('T').first)
             : dateController.text.trim();
 
+        final resolvedRefRange = refRangeController.text.trim().isEmpty ? (existing?.refRange ?? '') : refRangeController.text.trim();
+        editedStatus = _autoStatusFromRange(parsedValue, resolvedRefRange);
+
         final updated = LabEntry(
           id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
           metric: metric,
           value: parsedValue,
           unit: unitController.text.trim().isEmpty ? (existing?.unit ?? '') : unitController.text.trim(),
-          refRange: refRangeController.text.trim().isEmpty ? (existing?.refRange ?? '') : refRangeController.text.trim(),
+          refRange: resolvedRefRange,
           status: editedStatus,
           date: parsedDate,
           target: targetController.text.trim().isEmpty ? (existing?.target ?? '') : targetController.text.trim(),
@@ -472,17 +650,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 decoration: InputDecoration(labelText: 'Value (${lab.unit})'),
               ),
               const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                initialValue: editedStatus,
-                items: const [
-                  DropdownMenuItem(value: 'Normal', child: Text('Normal')),
-                  DropdownMenuItem(value: 'High', child: Text('High')),
-                  DropdownMenuItem(value: 'Low', child: Text('Low')),
-                ],
-                onChanged: (v) {
-                  if (v != null) editedStatus = v;
-                },
-                decoration: const InputDecoration(labelText: 'Status'),
+              Text(
+                'Status is auto-calculated from reference range.',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -508,6 +678,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     if (didSave == true) {
       final parsedValue = double.tryParse(valueController.text.trim()) ?? lab.value;
       final parsedDate = dateController.text.trim().isEmpty ? DateTime.now().toIso8601String().split('T').first : dateController.text.trim();
+      editedStatus = _autoStatusFromRange(parsedValue, lab.refRange);
 
       await AppDatabase.instance.addLabHistoryEntry(
         LabHistoryEntry(
@@ -1385,6 +1556,46 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _targetLabel(lab.value, lab.refRange) == 'On Target' ? Colors.green.shade50 : Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _targetLabel(lab.value, lab.refRange),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: _targetLabel(lab.value, lab.refRange) == 'On Target' ? Colors.green.shade800 : Colors.orange.shade800,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _trendLabel(lab) == 'Improving'
+                      ? Colors.blue.shade50
+                      : (_trendLabel(lab) == 'Worsening' ? Colors.red.shade50 : Colors.grey.shade200),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _trendLabel(lab),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: _trendLabel(lab) == 'Improving'
+                        ? Colors.blue.shade800
+                        : (_trendLabel(lab) == 'Worsening' ? Colors.red.shade800 : Colors.grey.shade700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
               Text(
                 isAr ? 'اتجاه الفحوصات' : 'Trend History',
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: Color(0xFF1E293B)),
@@ -1447,17 +1658,40 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               const SizedBox(height: 16),
               Align(
                 alignment: Alignment.centerRight,
-                child: ElevatedButton.icon(
-                  onPressed: () => _upsertLabEntry(),
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(isAr ? 'إضافة فحص' : 'Add Lab'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B3B2B),
-                    foregroundColor: Colors.white,
-                  ),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _exportBackupFile,
+                      icon: const Icon(Icons.download_rounded),
+                      label: Text(isAr ? 'نسخ احتياطي' : 'Backup'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _restoreBackupFile,
+                      icon: const Icon(Icons.upload_file_rounded),
+                      label: Text(isAr ? 'استعادة' : 'Restore'),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => _upsertLabEntry(),
+                      icon: const Icon(Icons.add_rounded),
+                      label: Text(isAr ? 'إضافة فحص' : 'Add Lab'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1B3B2B),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 4),
+              Text(
+                isAr ? 'SQLLite: نسخ واستعادة البيانات المحلية.' : 'SQLite: Export and restore your local data.',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               if (_labs.isEmpty)
                 Container(
                   width: double.infinity,

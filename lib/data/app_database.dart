@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -115,6 +116,11 @@ class AppDatabase {
 
   Database? _db;
 
+  Future<String> get databasePath async {
+    final dbDir = await getDatabasesPath();
+    return join(dbDir, _dbName);
+  }
+
   Future<Database> get database async {
     if (_db != null) return _db!;
     _db = await _openDb();
@@ -122,8 +128,7 @@ class AppDatabase {
   }
 
   Future<Database> _openDb() async {
-    final dbDir = await getDatabasesPath();
-    final dbPath = join(dbDir, _dbName);
+    final dbPath = await databasePath;
 
     return openDatabase(
       dbPath,
@@ -177,6 +182,51 @@ class AppDatabase {
         }
       },
     );
+  }
+
+  Future<void> close() async {
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+    }
+  }
+
+  Future<String> exportDatabaseTo(String destinationPath) async {
+    final sourcePath = await databasePath;
+    final resolvedDestination = destinationPath.toLowerCase().endsWith('.db')
+        ? destinationPath
+        : '$destinationPath.db';
+
+    await close();
+
+    final source = File(sourcePath);
+    if (!await source.exists()) {
+      await database;
+      throw Exception('Database file not found.');
+    }
+
+    await source.copy(resolvedDestination);
+    await database;
+    return resolvedDestination;
+  }
+
+  Future<void> importDatabaseFrom(String backupFilePath) async {
+    final backup = File(backupFilePath);
+    if (!await backup.exists()) {
+      throw Exception('Selected backup file does not exist.');
+    }
+
+    final targetPath = await databasePath;
+    final target = File(targetPath);
+
+    await close();
+
+    if (await target.exists()) {
+      await target.delete();
+    }
+
+    await backup.copy(targetPath);
+    await database;
   }
 
   Future<void> saveState(AppSnapshot snapshot) async {
