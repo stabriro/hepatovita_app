@@ -4,7 +4,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'app/di.dart';
 import 'data/app_database.dart';
+import 'features/labs/domain/entities/lab_alert_entity.dart' as domain_alert;
 import 'features/labs/domain/entities/lab_entity.dart';
+import 'features/labs/domain/entities/lab_history_entity.dart' as domain;
+import 'features/labs/domain/usecases/evaluate_lab_goal_usecase.dart';
+import 'features/labs/domain/usecases/generate_lab_alerts_usecase.dart';
 import 'features/labs/presentation/viewmodels/labs_view_model.dart';
 import 'l10n/app_localizations.dart';
 import 'services/local_notification_service.dart';
@@ -233,10 +237,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Map<String, List<LabHistoryEntry>> _labHistoryByMetric = {};
   final Set<String> _shownCriticalAlertKeys = <String>{};
   final LabsViewModel _labsViewModel = AppDi.provideLabsViewModel();
-
-  static final RegExp _rangePattern = RegExp(r'(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)');
-  static final RegExp _ltPattern = RegExp(r'<\s*(-?\d+(?:\.\d+)?)');
-  static final RegExp _gtPattern = RegExp(r'>\s*(-?\d+(?:\.\d+)?)');
+  final EvaluateLabGoalUseCase _evaluateLabGoal = EvaluateLabGoalUseCase();
+  late final GenerateLabAlertsUseCase _generateLabAlertsUseCase =
+      GenerateLabAlertsUseCase(_evaluateLabGoal);
 
   @override
   void initState() {
@@ -500,157 +503,152 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     await AppDatabase.instance.saveState(snapshot);
   }
 
-  _GoalRange? _parseGoalRange(String refRange) {
-    final rangeMatch = _rangePattern.firstMatch(refRange);
-    if (rangeMatch != null) {
-      final min = double.tryParse(rangeMatch.group(1)!);
-      final max = double.tryParse(rangeMatch.group(2)!);
-      if (min != null && max != null) {
-        return _GoalRange.between(min: min, max: max);
-      }
-    }
-
-    final ltMatch = _ltPattern.firstMatch(refRange);
-    if (ltMatch != null) {
-      final threshold = double.tryParse(ltMatch.group(1)!);
-      if (threshold != null) {
-        return _GoalRange.upper(threshold: threshold);
-      }
-    }
-
-    final gtMatch = _gtPattern.firstMatch(refRange);
-    if (gtMatch != null) {
-      final threshold = double.tryParse(gtMatch.group(1)!);
-      if (threshold != null) {
-        return _GoalRange.lower(threshold: threshold);
-      }
-    }
-
-    return null;
-  }
-
   String _autoStatusFromRange(double value, String refRange) {
-    final range = _parseGoalRange(refRange);
-    if (range == null) {
-      return 'Unknown';
-    }
-    if (range.isWithin(value)) {
-      return 'Normal';
-    }
-
-    if (range.type == _GoalRangeType.lower) {
-      return 'Low';
-    }
-    if (range.type == _GoalRangeType.upper) {
-      return 'High';
-    }
-
-    return value < range.min! ? 'Low' : 'High';
+    final probe = LabEntity(
+      id: 'tmp',
+      metric: 'tmp',
+      value: value,
+      unit: '',
+      refRange: refRange,
+      status: 'Unknown',
+      date: '',
+      target: '',
+      progressVal: 0,
+    );
+    return _evaluateLabGoal(probe).status;
   }
 
   String _targetLabel(double value, String refRange) {
     final l10n = AppLocalizations.of(context);
-    final range = _parseGoalRange(refRange);
-    if (range == null) {
-      return l10n.tr('target_unknown');
-    }
-    return range.isWithin(value) ? l10n.tr('on_target') : l10n.tr('off_target');
-  }
+    final probe = LabEntity(
+      id: 'tmp',
+      metric: 'tmp',
+      value: value,
+      unit: '',
+      refRange: refRange,
+      status: 'Unknown',
+      date: '',
+      target: '',
+      progressVal: 0,
+    );
+    final result = _evaluateLabGoal(probe).targetLabel;
 
-  double _distanceToTarget(double value, _GoalRange range) {
-    if (range.isWithin(value)) {
-      return 0;
-    }
-
-    switch (range.type) {
-      case _GoalRangeType.between:
-        return value < range.min! ? (range.min! - value) : (value - range.max!);
-      case _GoalRangeType.upper:
-        return value <= range.upper! ? 0 : (value - range.upper!);
-      case _GoalRangeType.lower:
-        return value >= range.lower! ? 0 : (range.lower! - value);
+    switch (result) {
+      case 'On Target':
+        return l10n.tr('on_target');
+      case 'Off Target':
+        return l10n.tr('off_target');
+      default:
+        return l10n.tr('target_unknown');
     }
   }
 
   String _trendLabel(LabEntry lab) {
     final l10n = AppLocalizations.of(context);
-    final range = _parseGoalRange(lab.refRange);
-    if (range == null) {
-      return l10n.tr('no_trend');
-    }
+    final domainHistory = (_labHistoryByMetric[lab.metric] ?? <LabHistoryEntry>[])
+        .map(
+          (e) => domain.LabHistoryEntity(
+            id: e.id,
+            metric: e.metric,
+            value: e.value,
+            unit: e.unit,
+            status: e.status,
+            date: e.date,
+            createdAt: e.createdAt,
+          ),
+        )
+        .toList();
 
-    final history = _labHistoryByMetric[lab.metric] ?? <LabHistoryEntry>[];
-    if (history.length < 2) {
-      return l10n.tr('no_trend');
-    }
+    final trend =
+        _generateLabAlertsUseCase.evaluateTrend(_toLabEntity(lab), domainHistory);
 
-    final firstDistance = _distanceToTarget(history.first.value, range);
-    final lastDistance = _distanceToTarget(history.last.value, range);
-    const epsilon = 0.0001;
-
-    if ((firstDistance - lastDistance).abs() <= epsilon) {
-      return l10n.tr('stable');
+    switch (trend) {
+      case 'Improving':
+        return l10n.tr('improving');
+      case 'Worsening':
+        return l10n.tr('worsening');
+      case 'Stable':
+        return l10n.tr('stable');
+      default:
+        return l10n.tr('no_trend');
     }
-    return lastDistance < firstDistance ? l10n.tr('improving') : l10n.tr('worsening');
   }
 
   List<_LabAlert> _generateLabAlerts(AppLocalizations l10n) {
-    final alerts = <_LabAlert>[];
+    final domainLabs = _labs.map(_toLabEntity).toList();
+    final domainHistoryByMetric = <String, List<domain.LabHistoryEntity>>{};
+    _labHistoryByMetric.forEach((metric, entries) {
+      domainHistoryByMetric[metric] = entries
+          .map(
+            (e) => domain.LabHistoryEntity(
+              id: e.id,
+              metric: e.metric,
+              value: e.value,
+              unit: e.unit,
+              status: e.status,
+              date: e.date,
+              createdAt: e.createdAt,
+            ),
+          )
+          .toList();
+    });
 
-    for (final lab in _labs) {
-      final target = _targetLabel(lab.value, lab.refRange);
-      final trend = _trendLabel(lab);
+    final domainAlerts = _generateLabAlertsUseCase(
+      labs: domainLabs,
+      historyByMetric: domainHistoryByMetric,
+    );
 
-      if (target == l10n.tr('off_target') && trend == l10n.tr('worsening')) {
-        alerts.add(
-          _LabAlert(
-            metric: lab.metric,
-            severity: _LabAlertSeverity.critical,
-            title: l10n.tr('alert_worsening_title', args: {'metric': lab.metric}),
+    return domainAlerts.map((a) {
+      switch (a.code) {
+        case 'OFF_TARGET_WORSENING':
+          final lab = _labs.firstWhere((l) => l.metric == a.metric);
+          return _LabAlert(
+            metric: a.metric,
+            severity: _mapSeverity(a.severity),
+            title: l10n.tr('alert_worsening_title', args: {'metric': a.metric}),
             message: l10n.tr('alert_worsening_message', args: {'value': '${lab.value}', 'unit': lab.unit}),
-          ),
-        );
-        continue;
-      }
-
-      if (target == l10n.tr('off_target') && (trend == l10n.tr('stable') || trend == l10n.tr('no_trend'))) {
-        alerts.add(
-          _LabAlert(
-            metric: lab.metric,
-            severity: _LabAlertSeverity.warning,
-            title: l10n.tr('alert_off_target_title', args: {'metric': lab.metric}),
+          );
+        case 'OFF_TARGET':
+          return _LabAlert(
+            metric: a.metric,
+            severity: _mapSeverity(a.severity),
+            title: l10n.tr('alert_off_target_title', args: {'metric': a.metric}),
             message: l10n.tr('alert_off_target_message'),
-          ),
-        );
-        continue;
-      }
-
-      if (target == l10n.tr('target_unknown')) {
-        alerts.add(
-          _LabAlert(
-            metric: lab.metric,
-            severity: _LabAlertSeverity.warning,
-            title: l10n.tr('alert_unknown_target_title', args: {'metric': lab.metric}),
+          );
+        case 'TARGET_UNKNOWN':
+          return _LabAlert(
+            metric: a.metric,
+            severity: _mapSeverity(a.severity),
+            title: l10n.tr('alert_unknown_target_title', args: {'metric': a.metric}),
             message: l10n.tr('alert_unknown_target_message'),
-          ),
-        );
-        continue;
-      }
-
-      if (target == l10n.tr('on_target') && trend == l10n.tr('improving')) {
-        alerts.add(
-          _LabAlert(
-            metric: lab.metric,
-            severity: _LabAlertSeverity.info,
-            title: l10n.tr('alert_good_title', args: {'metric': lab.metric}),
+          );
+        case 'ON_TARGET_IMPROVING':
+          return _LabAlert(
+            metric: a.metric,
+            severity: _mapSeverity(a.severity),
+            title: l10n.tr('alert_good_title', args: {'metric': a.metric}),
             message: l10n.tr('alert_good_message'),
-          ),
-        );
+          );
+        default:
+          return _LabAlert(
+            metric: a.metric,
+            severity: _LabAlertSeverity.info,
+            title: a.metric,
+            message: a.code,
+          );
       }
-    }
+    }).toList();
+  }
 
-    alerts.sort((a, b) => b.severity.priority.compareTo(a.severity.priority));
-    return alerts;
+  _LabAlertSeverity _mapSeverity(domain_alert.LabAlertSeverity severity) {
+    switch (severity) {
+      case domain_alert.LabAlertSeverity.critical:
+        return _LabAlertSeverity.critical;
+      case domain_alert.LabAlertSeverity.warning:
+        return _LabAlertSeverity.warning;
+      case domain_alert.LabAlertSeverity.info:
+        return _LabAlertSeverity.info;
+    }
   }
 
   Widget _buildAlertsPanel(bool isAr) {
@@ -2159,61 +2157,7 @@ class _MiniTrendPainter extends CustomPainter {
   }
 }
 
-enum _GoalRangeType { between, upper, lower }
-
-class _GoalRange {
-  final _GoalRangeType type;
-  final double? min;
-  final double? max;
-  final double? upper;
-  final double? lower;
-
-  const _GoalRange._({
-    required this.type,
-    this.min,
-    this.max,
-    this.upper,
-    this.lower,
-  });
-
-  factory _GoalRange.between({required double min, required double max}) {
-    return _GoalRange._(type: _GoalRangeType.between, min: min, max: max);
-  }
-
-  factory _GoalRange.upper({required double threshold}) {
-    return _GoalRange._(type: _GoalRangeType.upper, upper: threshold);
-  }
-
-  factory _GoalRange.lower({required double threshold}) {
-    return _GoalRange._(type: _GoalRangeType.lower, lower: threshold);
-  }
-
-  bool isWithin(double value) {
-    switch (type) {
-      case _GoalRangeType.between:
-        return value >= min! && value <= max!;
-      case _GoalRangeType.upper:
-        return value <= upper!;
-      case _GoalRangeType.lower:
-        return value >= lower!;
-    }
-  }
-}
-
 enum _LabAlertSeverity { critical, warning, info }
-
-extension _LabAlertSeverityPriority on _LabAlertSeverity {
-  int get priority {
-    switch (this) {
-      case _LabAlertSeverity.critical:
-        return 3;
-      case _LabAlertSeverity.warning:
-        return 2;
-      case _LabAlertSeverity.info:
-        return 1;
-    }
-  }
-}
 
 class _LabAlert {
   final String metric;
