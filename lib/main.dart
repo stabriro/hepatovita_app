@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'data/app_database.dart';
+import 'l10n/app_localizations.dart';
+import 'services/local_notification_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await LocalNotificationService.instance.init();
   runApp(const HepatoVitaApp());
 }
 
@@ -15,18 +20,26 @@ class HepatoVitaApp extends StatefulWidget {
 }
 
 class _HepatoVitaAppState extends State<HepatoVitaApp> {
-  String _lang = 'en';
+  Locale _locale = const Locale('en');
 
   void _toggleLanguage(String lang) {
     setState(() {
-      _lang = lang;
+      _locale = Locale(lang);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final isAr = _lang == 'ar';
+    final isAr = _locale.languageCode == 'ar';
     return MaterialApp(
+      locale: _locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       title: 'HepatoVita Companion',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -44,7 +57,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp> {
       home: Directionality(
         textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
         child: MainDashboardScreen(
-          lang: _lang,
+          lang: _locale.languageCode,
           onLanguageChanged: _toggleLanguage,
         ),
       ),
@@ -215,6 +228,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final TextEditingController _mealSearchController = TextEditingController();
   Map<String, dynamic>? _analyzedResult;
   Map<String, List<LabHistoryEntry>> _labHistoryByMetric = {};
+  final Set<String> _shownCriticalAlertKeys = <String>{};
 
   static final RegExp _rangePattern = RegExp(r'(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)');
   static final RegExp _ltPattern = RegExp(r'<\s*(-?\d+(?:\.\d+)?)');
@@ -259,6 +273,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     setState(() {
       _labHistoryByMetric = grouped;
     });
+
+    _maybeShowCriticalAlertPopup();
   }
 
   Future<void> _reloadAllData() async {
@@ -266,10 +282,77 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     await _loadLabHistory();
   }
 
+  void _maybeShowCriticalAlertPopup() {
+    if (!mounted) {
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context);
+    final criticalAlerts = _generateLabAlerts(l10n)
+        .where((a) => a.severity == _LabAlertSeverity.critical)
+        .toList();
+
+    if (criticalAlerts.isEmpty) {
+      return;
+    }
+
+    _LabAlert? nextAlert;
+    String? alertKey;
+    for (final alert in criticalAlerts) {
+      final key = '${alert.metric}|${alert.message}';
+      if (!_shownCriticalAlertKeys.contains(key)) {
+        _shownCriticalAlertKeys.add(key);
+        nextAlert = alert;
+        alertKey = key;
+        break;
+      }
+    }
+
+    if (nextAlert == null) {
+      return;
+    }
+
+    final popupText = l10n.tr('high_alert_popup', args: {'metric': nextAlert.metric});
+
+    final notificationId = alertKey.hashCode.abs() % 2147483647;
+    LocalNotificationService.instance.showCriticalAlert(
+      id: notificationId,
+      title: l10n.tr('high_alert_title'),
+      body: popupText,
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(popupText),
+          backgroundColor: const Color(0xFFB91C1C),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: l10n.tr('view'),
+            textColor: Colors.white,
+            onPressed: () {
+              if (!mounted) {
+                return;
+              }
+              setState(() {
+                _currentTabIndex = 2;
+              });
+            },
+          ),
+        ),
+      );
+    });
+  }
+
   Future<void> _exportBackupFile() async {
+    final l10n = AppLocalizations.of(context);
     final defaultFileName = 'hepatovita_backup_${DateTime.now().toIso8601String().split('T').first}.db';
     final path = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save SQLite Backup',
+      dialogTitle: l10n.tr('save_sqlite_backup'),
       fileName: defaultFileName,
       type: FileType.custom,
       allowedExtensions: ['db'],
@@ -283,17 +366,18 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       final savedPath = await AppDatabase.instance.exportDatabaseTo(path);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Backup saved to $savedPath')),
+        SnackBar(content: Text(l10n.tr('backup_saved_to', args: {'path': savedPath}))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Backup failed: $e')),
+        SnackBar(content: Text(l10n.tr('backup_failed', args: {'error': '$e'}))),
       );
     }
   }
 
   Future<void> _restoreBackupFile() async {
+    final l10n = AppLocalizations.of(context);
     final file = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['db'],
@@ -312,16 +396,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Restore Backup?'),
-          content: const Text('This will replace current app data with the selected backup file.'),
+          title: Text(l10n.tr('restore_backup_title')),
+          content: Text(l10n.tr('restore_backup_message')),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
+              child: Text(l10n.tr('cancel')),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Restore'),
+              child: Text(l10n.tr('restore_action')),
             ),
           ],
         );
@@ -337,12 +421,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       await _reloadAllData();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Backup restored successfully.')),
+        SnackBar(content: Text(l10n.tr('restore_success'))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Restore failed: $e')),
+        SnackBar(content: Text(l10n.tr('restore_failed', args: {'error': '$e'}))),
       );
     }
   }
@@ -410,11 +494,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   String _targetLabel(double value, String refRange) {
+    final l10n = AppLocalizations.of(context);
     final range = _parseGoalRange(refRange);
     if (range == null) {
-      return 'Target Unknown';
+      return l10n.tr('target_unknown');
     }
-    return range.isWithin(value) ? 'On Target' : 'Off Target';
+    return range.isWithin(value) ? l10n.tr('on_target') : l10n.tr('off_target');
   }
 
   double _distanceToTarget(double value, _GoalRange range) {
@@ -433,14 +518,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   String _trendLabel(LabEntry lab) {
+    final l10n = AppLocalizations.of(context);
     final range = _parseGoalRange(lab.refRange);
     if (range == null) {
-      return 'No Trend';
+      return l10n.tr('no_trend');
     }
 
     final history = _labHistoryByMetric[lab.metric] ?? <LabHistoryEntry>[];
     if (history.length < 2) {
-      return 'No Trend';
+      return l10n.tr('no_trend');
     }
 
     final firstDistance = _distanceToTarget(history.first.value, range);
@@ -448,12 +534,157 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     const epsilon = 0.0001;
 
     if ((firstDistance - lastDistance).abs() <= epsilon) {
-      return 'Stable';
+      return l10n.tr('stable');
     }
-    return lastDistance < firstDistance ? 'Improving' : 'Worsening';
+    return lastDistance < firstDistance ? l10n.tr('improving') : l10n.tr('worsening');
+  }
+
+  List<_LabAlert> _generateLabAlerts(AppLocalizations l10n) {
+    final alerts = <_LabAlert>[];
+
+    for (final lab in _labs) {
+      final target = _targetLabel(lab.value, lab.refRange);
+      final trend = _trendLabel(lab);
+
+      if (target == l10n.tr('off_target') && trend == l10n.tr('worsening')) {
+        alerts.add(
+          _LabAlert(
+            metric: lab.metric,
+            severity: _LabAlertSeverity.critical,
+            title: l10n.tr('alert_worsening_title', args: {'metric': lab.metric}),
+            message: l10n.tr('alert_worsening_message', args: {'value': '${lab.value}', 'unit': lab.unit}),
+          ),
+        );
+        continue;
+      }
+
+      if (target == l10n.tr('off_target') && (trend == l10n.tr('stable') || trend == l10n.tr('no_trend'))) {
+        alerts.add(
+          _LabAlert(
+            metric: lab.metric,
+            severity: _LabAlertSeverity.warning,
+            title: l10n.tr('alert_off_target_title', args: {'metric': lab.metric}),
+            message: l10n.tr('alert_off_target_message'),
+          ),
+        );
+        continue;
+      }
+
+      if (target == l10n.tr('target_unknown')) {
+        alerts.add(
+          _LabAlert(
+            metric: lab.metric,
+            severity: _LabAlertSeverity.warning,
+            title: l10n.tr('alert_unknown_target_title', args: {'metric': lab.metric}),
+            message: l10n.tr('alert_unknown_target_message'),
+          ),
+        );
+        continue;
+      }
+
+      if (target == l10n.tr('on_target') && trend == l10n.tr('improving')) {
+        alerts.add(
+          _LabAlert(
+            metric: lab.metric,
+            severity: _LabAlertSeverity.info,
+            title: l10n.tr('alert_good_title', args: {'metric': lab.metric}),
+            message: l10n.tr('alert_good_message'),
+          ),
+        );
+      }
+    }
+
+    alerts.sort((a, b) => b.severity.priority.compareTo(a.severity.priority));
+    return alerts;
+  }
+
+  Widget _buildAlertsPanel(bool isAr) {
+    final l10n = AppLocalizations.of(context);
+    final alerts = _generateLabAlerts(l10n);
+    if (alerts.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green.shade200),
+        ),
+        child: Text(
+          l10n.tr('alerts_none'),
+          style: TextStyle(fontSize: 11, color: Colors.green.shade900, fontWeight: FontWeight.w600),
+        ),
+      );
+    }
+
+    return Column(
+      children: alerts.map((alert) {
+        final style = _alertVisuals(alert.severity);
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: style.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: style.border),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(style.icon, color: style.foreground, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      alert.title,
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: style.foreground),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      alert.message,
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF334155)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  _AlertVisuals _alertVisuals(_LabAlertSeverity severity) {
+    switch (severity) {
+      case _LabAlertSeverity.critical:
+        return _AlertVisuals(
+          icon: Icons.warning_amber_rounded,
+          background: const Color(0xFFFFF1F2),
+          border: const Color(0xFFFDA4AF),
+          foreground: const Color(0xFFB91C1C),
+        );
+      case _LabAlertSeverity.warning:
+        return _AlertVisuals(
+          icon: Icons.error_outline_rounded,
+          background: const Color(0xFFFFF7ED),
+          border: const Color(0xFFFDBA74),
+          foreground: const Color(0xFF9A3412),
+        );
+      case _LabAlertSeverity.info:
+        return _AlertVisuals(
+          icon: Icons.check_circle_outline_rounded,
+          background: const Color(0xFFECFEFF),
+          border: const Color(0xFF67E8F9),
+          foreground: const Color(0xFF155E75),
+        );
+    }
   }
 
   Future<void> _upsertLabEntry({int? index}) async {
+    final l10n = AppLocalizations.of(context);
     final existing = index == null ? null : _labs[index];
 
     final metricController = TextEditingController(text: existing?.metric ?? '');
@@ -496,7 +727,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Status is auto-calculated from reference range.',
+                  l10n.tr('status_auto'),
                   style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                 ),
                 const SizedBox(height: 10),
@@ -632,6 +863,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Future<void> _addLabResult(LabEntry lab) async {
+    final l10n = AppLocalizations.of(context);
     final valueController = TextEditingController(text: lab.value.toString());
     final dateController = TextEditingController(text: DateTime.now().toIso8601String().split('T').first);
     String editedStatus = lab.status;
@@ -651,7 +883,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                'Status is auto-calculated from reference range.',
+                l10n.tr('status_auto'),
                 style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 10),
@@ -1091,7 +1323,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Widget _buildTabSegment(int index, String title, IconData icon) {
     final active = _currentTabIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _currentTabIndex = index),
+      onTap: () {
+        setState(() => _currentTabIndex = index);
+        if (index == 2) {
+          _maybeShowCriticalAlertPopup();
+        }
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -1539,6 +1776,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Widget _buildLabTrendCard(LabEntry lab, bool isAr) {
+    final l10n = AppLocalizations.of(context);
     final history = _labHistoryByMetric[lab.metric] ?? <LabHistoryEntry>[];
     final values = history.map((e) => e.value).toList();
 
@@ -1597,11 +1835,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                isAr ? 'اتجاه الفحوصات' : 'Trend History',
+                l10n.tr('trend_history'),
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: Color(0xFF1E293B)),
               ),
               Text(
-                isAr ? '${history.length} قياس' : '${history.length} records',
+                l10n.tr('records_count', args: {'count': '${history.length}'}),
                 style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
               ),
             ],
@@ -1609,7 +1847,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           const SizedBox(height: 8),
           if (values.isEmpty)
             Text(
-              isAr ? 'لا يوجد تاريخ بعد. أضف نتيجة جديدة.' : 'No history yet. Add a new result.',
+              l10n.tr('no_history'),
               style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
             )
           else
@@ -1627,9 +1865,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                isAr
-                    ? 'آخر نتيجة: ${history.last.value} ${history.last.unit} في ${history.last.date}'
-                    : 'Latest: ${history.last.value} ${history.last.unit} on ${history.last.date}',
+                l10n.tr(
+                  'latest_value',
+                  args: {
+                    'value': '${history.last.value}',
+                    'unit': history.last.unit,
+                    'date': history.last.date,
+                  },
+                ),
                 style: const TextStyle(fontSize: 10, color: Color(0xFF475569)),
               ),
             ),
@@ -1639,6 +1882,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Widget _buildModernLabsTab(bool isAr) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Container(
@@ -1666,17 +1910,17 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     OutlinedButton.icon(
                       onPressed: _exportBackupFile,
                       icon: const Icon(Icons.download_rounded),
-                      label: Text(isAr ? 'نسخ احتياطي' : 'Backup'),
+                      label: Text(l10n.tr('backup')),
                     ),
                     OutlinedButton.icon(
                       onPressed: _restoreBackupFile,
                       icon: const Icon(Icons.upload_file_rounded),
-                      label: Text(isAr ? 'استعادة' : 'Restore'),
+                      label: Text(l10n.tr('restore')),
                     ),
                     ElevatedButton.icon(
                       onPressed: () => _upsertLabEntry(),
                       icon: const Icon(Icons.add_rounded),
-                      label: Text(isAr ? 'إضافة فحص' : 'Add Lab'),
+                      label: Text(l10n.tr('add_lab')),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1B3B2B),
                         foregroundColor: Colors.white,
@@ -1687,10 +1931,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                isAr ? 'SQLLite: نسخ واستعادة البيانات المحلية.' : 'SQLite: Export and restore your local data.',
+                l10n.tr('sqlite_backup_hint'),
                 style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 8),
+              _buildAlertsPanel(isAr),
+              const SizedBox(height: 6),
               const SizedBox(height: 4),
               if (_labs.isEmpty)
                 Container(
@@ -1907,4 +2153,88 @@ class _MiniTrendPainter extends CustomPainter {
   bool shouldRepaint(covariant _MiniTrendPainter oldDelegate) {
     return oldDelegate.values != values || oldDelegate.lineColor != lineColor;
   }
+}
+
+enum _GoalRangeType { between, upper, lower }
+
+class _GoalRange {
+  final _GoalRangeType type;
+  final double? min;
+  final double? max;
+  final double? upper;
+  final double? lower;
+
+  const _GoalRange._({
+    required this.type,
+    this.min,
+    this.max,
+    this.upper,
+    this.lower,
+  });
+
+  factory _GoalRange.between({required double min, required double max}) {
+    return _GoalRange._(type: _GoalRangeType.between, min: min, max: max);
+  }
+
+  factory _GoalRange.upper({required double threshold}) {
+    return _GoalRange._(type: _GoalRangeType.upper, upper: threshold);
+  }
+
+  factory _GoalRange.lower({required double threshold}) {
+    return _GoalRange._(type: _GoalRangeType.lower, lower: threshold);
+  }
+
+  bool isWithin(double value) {
+    switch (type) {
+      case _GoalRangeType.between:
+        return value >= min! && value <= max!;
+      case _GoalRangeType.upper:
+        return value <= upper!;
+      case _GoalRangeType.lower:
+        return value >= lower!;
+    }
+  }
+}
+
+enum _LabAlertSeverity { critical, warning, info }
+
+extension _LabAlertSeverityPriority on _LabAlertSeverity {
+  int get priority {
+    switch (this) {
+      case _LabAlertSeverity.critical:
+        return 3;
+      case _LabAlertSeverity.warning:
+        return 2;
+      case _LabAlertSeverity.info:
+        return 1;
+    }
+  }
+}
+
+class _LabAlert {
+  final String metric;
+  final _LabAlertSeverity severity;
+  final String title;
+  final String message;
+
+  const _LabAlert({
+    required this.metric,
+    required this.severity,
+    required this.title,
+    required this.message,
+  });
+}
+
+class _AlertVisuals {
+  final IconData icon;
+  final Color background;
+  final Color border;
+  final Color foreground;
+
+  const _AlertVisuals({
+    required this.icon,
+    required this.background,
+    required this.border,
+    required this.foreground,
+  });
 }
