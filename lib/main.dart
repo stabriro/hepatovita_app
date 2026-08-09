@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'app/di.dart';
 import 'data/app_database.dart';
+import 'features/labs/domain/entities/lab_entity.dart';
+import 'features/labs/presentation/viewmodels/labs_view_model.dart';
 import 'l10n/app_localizations.dart';
 import 'services/local_notification_service.dart';
 
@@ -229,6 +232,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Map<String, dynamic>? _analyzedResult;
   Map<String, List<LabHistoryEntry>> _labHistoryByMetric = {};
   final Set<String> _shownCriticalAlertKeys = <String>{};
+  final LabsViewModel _labsViewModel = AppDi.provideLabsViewModel();
 
   static final RegExp _rangePattern = RegExp(r'(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)');
   static final RegExp _ltPattern = RegExp(r'<\s*(-?\d+(?:\.\d+)?)');
@@ -237,14 +241,74 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _labsViewModel.addListener(_onLabsViewModelChanged);
     _loadPersistedState();
-    _loadLabHistory();
+    _labsViewModel.load();
   }
 
   @override
   void dispose() {
+    _labsViewModel.removeListener(_onLabsViewModelChanged);
     _mealSearchController.dispose();
     super.dispose();
+  }
+
+  void _onLabsViewModelChanged() {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _labs = _labsViewModel.labs.map(_fromLabEntity).toList();
+
+      final grouped = <String, List<LabHistoryEntry>>{};
+      _labsViewModel.historyByMetric.forEach((metric, entries) {
+        grouped[metric] = entries
+            .map(
+              (e) => LabHistoryEntry(
+                id: e.id,
+                metric: e.metric,
+                value: e.value,
+                unit: e.unit,
+                status: e.status,
+                date: e.date,
+                createdAt: e.createdAt,
+              ),
+            )
+            .toList();
+      });
+      _labHistoryByMetric = grouped;
+    });
+
+    _maybeShowCriticalAlertPopup();
+  }
+
+  LabEntity _toLabEntity(LabEntry entry) {
+    return LabEntity(
+      id: entry.id,
+      metric: entry.metric,
+      value: entry.value,
+      unit: entry.unit,
+      refRange: entry.refRange,
+      status: entry.status,
+      date: entry.date,
+      target: entry.target,
+      progressVal: entry.progressVal,
+    );
+  }
+
+  LabEntry _fromLabEntity(LabEntity entity) {
+    return LabEntry(
+      id: entity.id,
+      metric: entity.metric,
+      value: entity.value,
+      unit: entity.unit,
+      refRange: entity.refRange,
+      status: entity.status,
+      date: entity.date,
+      target: entity.target,
+      progressVal: entity.progressVal,
+    );
   }
 
   Future<void> _loadPersistedState() async {
@@ -261,20 +325,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _sun15 = snapshot.sun15;
       _lowFatDay = snapshot.lowFatDay;
       _analyzedResult = snapshot.analyzedResult;
-      _labs = snapshot.labs.map(LabEntry.fromMap).toList();
     });
   }
 
   Future<void> _loadLabHistory() async {
-    final grouped = await AppDatabase.instance.getAllLabHistoryGrouped();
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _labHistoryByMetric = grouped;
-    });
-
-    _maybeShowCriticalAlertPopup();
+    await _labsViewModel.load();
   }
 
   Future<void> _reloadAllData() async {
@@ -788,34 +843,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           progressVal: clampedProgress,
         );
 
-        final shouldStoreHistory = existing == null ||
-            existing.metric != updated.metric ||
-            existing.value != updated.value ||
-            existing.status != updated.status ||
-            existing.date != updated.date;
-
-        setState(() {
-          if (index == null) {
-            _labs.add(updated);
-          } else {
-            _labs[index] = updated;
-          }
-        });
-        await _savePersistedState();
-
-        if (shouldStoreHistory) {
-          await AppDatabase.instance.addLabHistoryEntry(
-            LabHistoryEntry(
-              metric: updated.metric,
-              value: updated.value,
-              unit: updated.unit,
-              status: updated.status,
-              date: parsedDate,
-              createdAt: DateTime.now().toIso8601String(),
-            ),
-          );
-          await _loadLabHistory();
-        }
+        await _labsViewModel.upsertLab(_toLabEntity(updated));
       }
     }
 
@@ -852,13 +880,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
 
     if (confirm == true) {
-      final metric = lab.metric;
-      setState(() {
-        _labs.removeAt(index);
-      });
-      await _savePersistedState();
-      await AppDatabase.instance.deleteLabHistoryByMetric(metric);
-      await _loadLabHistory();
+      await _labsViewModel.deleteLab(lab.id);
     }
   }
 
@@ -912,30 +934,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       final parsedDate = dateController.text.trim().isEmpty ? DateTime.now().toIso8601String().split('T').first : dateController.text.trim();
       editedStatus = _autoStatusFromRange(parsedValue, lab.refRange);
 
-      await AppDatabase.instance.addLabHistoryEntry(
-        LabHistoryEntry(
-          metric: lab.metric,
-          value: parsedValue,
-          unit: lab.unit,
-          status: editedStatus,
-          date: parsedDate,
-          createdAt: DateTime.now().toIso8601String(),
-        ),
+      final updated = lab.copyWith(
+        value: parsedValue,
+        status: editedStatus,
+        date: parsedDate,
       );
-
-      setState(() {
-        final index = _labs.indexWhere((e) => e.id == lab.id);
-        if (index != -1) {
-          _labs[index] = _labs[index].copyWith(
-            value: parsedValue,
-            status: editedStatus,
-            date: parsedDate,
-          );
-        }
-      });
-
-      await _savePersistedState();
-      await _loadLabHistory();
+      await _labsViewModel.upsertLab(_toLabEntity(updated));
     }
 
     valueController.dispose();
