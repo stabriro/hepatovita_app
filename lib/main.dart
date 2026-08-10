@@ -1134,6 +1134,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   static const _kReminderLabsFollowUp = 'labs_follow_up';
 
   int _currentTabIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _notificationsEnabled = true;
   bool _biometricEnabled = false;
   bool _canUseBiometric = false;
@@ -2241,8 +2242,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       return;
     }
 
-    final draft = LabEntryFlowController.parseLabDraftFromText(extractedText);
-    if (draft == null) {
+    final drafts = LabEntryFlowController.parseLabDraftsFromText(extractedText);
+    if (drafts.isEmpty) {
       if (!mounted) {
         return;
       }
@@ -2253,7 +2254,262 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       return;
     }
 
-    await _upsertLabEntry(prefill: draft);
+    final approvedDrafts = await _reviewExtractedLabDrafts(drafts);
+    if (approvedDrafts == null || approvedDrafts.isEmpty) {
+      return;
+    }
+
+    await _saveLabDraftBatch(approvedDrafts);
+  }
+
+  Future<List<LabDraft>?> _reviewExtractedLabDrafts(
+    List<LabDraft> drafts,
+  ) async {
+    final isAr = widget.lang == 'ar';
+    final items = drafts
+        .map((d) => _LabDraftReviewItem(draft: d, selected: true))
+        .toList();
+
+    final didConfirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setInnerState) {
+            return AlertDialog(
+              title: Text(isAr ? 'مراجعة نتائج التحاليل' : 'Review Lab Results'),
+              content: SizedBox(
+                width: 460,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isAr
+                          ? 'راجع القيم المستخرجة قبل الحفظ. يمكنك تعديل أي عنصر.'
+                          : 'Review extracted values before saving. You can edit any item.',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                    ),
+                    const SizedBox(height: 10),
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: items.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final item = items[index];
+                          final draft = item.draft;
+                          return CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            value: item.selected,
+                            onChanged: (value) {
+                              setInnerState(() {
+                                item.selected = value ?? true;
+                              });
+                            },
+                            title: Text(
+                              draft.metric,
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            subtitle: Text(
+                              '${draft.value} ${draft.unit}  |  ${draft.date}${draft.refRange.isEmpty ? '' : '  |  ${draft.refRange}'}',
+                            ),
+                            secondary: IconButton(
+                              tooltip: isAr ? 'تعديل' : 'Edit',
+                              icon: const Icon(Icons.edit_rounded),
+                              onPressed: () async {
+                                final edited = await _editExtractedLabDraft(draft);
+                                if (edited == null) {
+                                  return;
+                                }
+                                setInnerState(() {
+                                  item.draft = edited;
+                                });
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(isAr ? 'إلغاء' : 'Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(isAr ? 'حفظ المحدد' : 'Save Selected'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (didConfirm != true) {
+      return null;
+    }
+
+    return items
+        .where((item) => item.selected)
+        .map((item) => item.draft)
+        .toList();
+  }
+
+  Future<LabDraft?> _editExtractedLabDraft(LabDraft draft) async {
+    final isAr = widget.lang == 'ar';
+    final metricController = TextEditingController(text: draft.metric);
+    final valueController = TextEditingController(text: draft.value);
+    final unitController = TextEditingController(text: draft.unit);
+    final refRangeController = TextEditingController(text: draft.refRange);
+    final dateController = TextEditingController(text: draft.date);
+
+    final didSave = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(isAr ? 'تعديل نتيجة' : 'Edit Result'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: metricController,
+                  decoration: InputDecoration(labelText: isAr ? 'اسم الفحص' : 'Metric'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: valueController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(labelText: isAr ? 'القيمة' : 'Value'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: unitController,
+                  decoration: InputDecoration(labelText: isAr ? 'الوحدة' : 'Unit'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: refRangeController,
+                  decoration: InputDecoration(labelText: isAr ? 'المدى المرجعي' : 'Reference Range'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: dateController,
+                  decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(isAr ? 'إلغاء' : 'Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(isAr ? 'حفظ' : 'Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (didSave != true) {
+      metricController.dispose();
+      valueController.dispose();
+      unitController.dispose();
+      refRangeController.dispose();
+      dateController.dispose();
+      return null;
+    }
+
+    final edited = draft.copyWith(
+      metric: metricController.text.trim(),
+      value: valueController.text.trim(),
+      unit: unitController.text.trim(),
+      refRange: refRangeController.text.trim(),
+      date: dateController.text.trim(),
+    );
+
+    metricController.dispose();
+    valueController.dispose();
+    unitController.dispose();
+    refRangeController.dispose();
+    dateController.dispose();
+    return edited;
+  }
+
+  Future<void> _saveLabDraftBatch(List<LabDraft> drafts) async {
+    final isAr = widget.lang == 'ar';
+    int savedCount = 0;
+
+    for (final draft in drafts) {
+      final saved = await _saveSingleLabDraft(draft);
+      if (saved) {
+        savedCount += 1;
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isAr
+              ? 'تم حفظ $savedCount نتيجة من ${drafts.length}.'
+              : 'Saved $savedCount of ${drafts.length} extracted results.',
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _saveSingleLabDraft(LabDraft draft) async {
+    final metric = draft.metric.trim();
+    final parsedValue = double.tryParse(draft.value.trim());
+    if (metric.isEmpty || parsedValue == null) {
+      return false;
+    }
+
+    final targetMetricKey = LabEntryFlowController.canonicalMetricKey(metric);
+    final existingIndex = _labs.indexWhere((lab) {
+      final existingMetricKey = LabEntryFlowController.canonicalMetricKey(
+        lab.metric,
+      );
+      return existingMetricKey == targetMetricKey;
+    });
+    final existing = existingIndex == -1 ? null : _labs[existingIndex];
+
+    final resolvedUnit = draft.unit.trim().isEmpty
+        ? (existing?.unit ?? '')
+        : draft.unit.trim();
+    final resolvedRefRange = draft.refRange.trim().isEmpty
+        ? (existing?.refRange ?? '')
+        : draft.refRange.trim();
+    final resolvedDate = draft.date.trim().isEmpty
+        ? DateTime.now().toIso8601String().split('T').first
+        : draft.date.trim();
+    final resolvedStatus = _autoStatusFromRange(parsedValue, resolvedRefRange);
+
+    final updated = LabEntry(
+      id: existing?.id ?? '${DateTime.now().microsecondsSinceEpoch}_${metric.hashCode.abs()}',
+      metric: metric,
+      value: parsedValue,
+      unit: resolvedUnit,
+      refRange: resolvedRefRange,
+      status: resolvedStatus,
+      date: resolvedDate,
+      target: existing?.target ?? '',
+      progressVal: existing?.progressVal ?? 0.5,
+    );
+
+    await _labsViewModel.upsertLab(_toLabEntity(updated));
+    return true;
   }
 
   Future<void> _upsertLabEntry({int? index, LabDraft? prefill}) async {
@@ -2771,8 +3027,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Widget build(BuildContext context) {
     final isAr = widget.lang == 'ar';
     final score = _dashboardViewModel.score;
+    const primaryTabOrder = <int>[0, 2, 4, 6];
+    final selectedPrimaryNavIndex = primaryTabOrder.contains(_currentTabIndex)
+        ? primaryTabOrder.indexOf(_currentTabIndex)
+        : 0;
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: _buildAppDrawer(isAr),
       body: Stack(
         children: [
           const _HealthyBackdrop(),
@@ -2816,32 +3078,20 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
           child: NavigationBar(
-            selectedIndex: _currentTabIndex,
-            onDestinationSelected: _goToTab,
+            selectedIndex: selectedPrimaryNavIndex,
+            onDestinationSelected: (index) => _goToTab(primaryTabOrder[index]),
             destinations: [
               NavigationDestination(
                 icon: const Icon(Icons.home_rounded),
                 label: isAr ? 'الرئيسية' : 'Home',
               ),
               NavigationDestination(
-                icon: const Icon(Icons.restaurant_menu_rounded),
-                label: isAr ? 'الوجبات' : 'Meals',
-              ),
-              NavigationDestination(
                 icon: const Icon(Icons.science_rounded),
                 label: isAr ? 'التحاليل' : 'Labs',
               ),
               NavigationDestination(
-                icon: const Icon(Icons.menu_book_rounded),
-                label: isAr ? 'التثقيف' : 'Education',
-              ),
-              NavigationDestination(
                 icon: const Icon(Icons.medication_rounded),
                 label: isAr ? 'الأدوية' : 'Meds',
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.calendar_month_rounded),
-                label: isAr ? 'الخطة الأسبوعية' : 'Weekly Plan',
               ),
               NavigationDestination(
                 icon: const Icon(Icons.person_rounded),
@@ -2852,6 +3102,101 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildAppDrawer(bool isAr) {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            ListTile(
+              title: Text(
+                isAr ? 'التنقل' : 'Navigation',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              subtitle: Text(
+                isAr
+                    ? 'التبويبات الأساسية بالأسفل، وباقي الأقسام هنا.'
+                    : 'Primary tabs are below. Other sections are here.',
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  _buildDrawerTabItem(index: 0, isAr: isAr),
+                  _buildDrawerTabItem(index: 2, isAr: isAr),
+                  _buildDrawerTabItem(index: 4, isAr: isAr),
+                  _buildDrawerTabItem(index: 6, isAr: isAr),
+                  const Divider(height: 20),
+                  _buildDrawerTabItem(index: 1, isAr: isAr),
+                  _buildDrawerTabItem(index: 3, isAr: isAr),
+                  _buildDrawerTabItem(index: 5, isAr: isAr),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerTabItem({
+    required int index,
+    required bool isAr,
+  }) {
+    return ListTile(
+      leading: Icon(_tabIconForIndex(index)),
+      title: Text(_tabLabelForIndex(index, isAr)),
+      selected: _currentTabIndex == index,
+      onTap: () {
+        Navigator.of(context).pop();
+        _goToTab(index);
+      },
+    );
+  }
+
+  IconData _tabIconForIndex(int index) {
+    switch (index) {
+      case 0:
+        return Icons.home_rounded;
+      case 1:
+        return Icons.restaurant_menu_rounded;
+      case 2:
+        return Icons.science_rounded;
+      case 3:
+        return Icons.menu_book_rounded;
+      case 4:
+        return Icons.medication_rounded;
+      case 5:
+        return Icons.calendar_month_rounded;
+      case 6:
+        return Icons.person_rounded;
+      default:
+        return Icons.circle;
+    }
+  }
+
+  String _tabLabelForIndex(int index, bool isAr) {
+    switch (index) {
+      case 0:
+        return isAr ? 'الرئيسية' : 'Home';
+      case 1:
+        return isAr ? 'الوجبات' : 'Meals';
+      case 2:
+        return isAr ? 'التحاليل' : 'Labs';
+      case 3:
+        return isAr ? 'التثقيف' : 'Education';
+      case 4:
+        return isAr ? 'الأدوية' : 'Meds';
+      case 5:
+        return isAr ? 'الخطة الأسبوعية' : 'Weekly Plan';
+      case 6:
+        return isAr ? 'الملف' : 'Profile';
+      default:
+        return '';
+    }
   }
 
   Widget _buildActiveTabContent(bool isAr) {
@@ -2878,6 +3223,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Widget _buildModernHeader(bool isAr) {
     return DashboardHeader(
       isAr: isAr,
+      onMenuPressed: () {
+        _scaffoldKey.currentState?.openDrawer();
+      },
     );
   }
 
@@ -3171,5 +3519,15 @@ class _HealthyBackdrop extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LabDraftReviewItem {
+  LabDraft draft;
+  bool selected;
+
+  _LabDraftReviewItem({
+    required this.draft,
+    required this.selected,
+  });
 }
 

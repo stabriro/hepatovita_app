@@ -87,4 +87,20 @@ class LabDraft {
     required this.refRange,
     required this.date,
   });
+
+  LabDraft copyWith({
+    String? metric,
+    String? value,
+    String? unit,
+    String? refRange,
+    String? date,
+  }) {
+    return LabDraft(
+      metric: metric ?? this.metric,
+      value: value ?? this.value,
+      unit: unit ?? this.unit,
+      refRange: refRange ?? this.refRange,
+      date: date ?? this.date,
+    );
+  }
 }

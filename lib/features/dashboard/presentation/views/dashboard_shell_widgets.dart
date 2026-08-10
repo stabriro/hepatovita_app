@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 
 class DashboardHeader extends StatelessWidget {
   final bool isAr;
+  final VoidCallback onMenuPressed;
 
   const DashboardHeader({
     super.key,
     required this.isAr,
+    required this.onMenuPressed,
   });
 
   @override
@@ -32,17 +34,20 @@ class DashboardHeader extends StatelessWidget {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: isAr ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: isAr ? MainAxisAlignment.end : MainAxisAlignment.start,
                   children: [
                     Flexible(
                       child: Text(
                         isAr ? 'اطمئن' : 'It',
                         overflow: TextOverflow.ellipsis,
+                        textAlign: isAr ? TextAlign.right : TextAlign.left,
                         style: TextStyle(
                           fontFamily: isAr ? 'Cairo' : 'Outfit',
                           fontWeight: FontWeight.w900,
@@ -57,6 +62,7 @@ class DashboardHeader extends StatelessWidget {
                         child: Text(
                           'main',
                           overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.left,
                           style: TextStyle(
                             fontFamily: isAr ? 'Cairo' : 'Outfit',
                             fontWeight: FontWeight.w900,
@@ -71,9 +77,25 @@ class DashboardHeader extends StatelessWidget {
                 Text(
                   isAr ? 'رفيقك الصحي والسريري الكبدي' : 'Metabolic & Liver Companion',
                   overflow: TextOverflow.ellipsis,
+                  textAlign: isAr ? TextAlign.right : TextAlign.left,
                   style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.18),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+            ),
+            child: IconButton(
+              tooltip: isAr ? 'القائمة' : 'Menu',
+              onPressed: onMenuPressed,
+              icon: const Icon(Icons.menu_rounded, color: Colors.white),
             ),
           ),
         ],
