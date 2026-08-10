@@ -998,8 +998,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   children: [
                     _buildModernHeroScoreCard(score, isAr),
                     const SizedBox(height: 16),
-                    _buildSegmentedTabBar(isAr),
-                    const SizedBox(height: 16),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
                       child: _buildActiveTabContent(isAr),
@@ -1010,6 +1008,28 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentTabIndex,
+        onDestinationSelected: _goToTab,
+        destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.home_rounded),
+            label: isAr ? 'الرئيسية' : 'Home',
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.restaurant_menu_rounded),
+            label: isAr ? 'الوجبات' : 'Meals',
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.science_rounded),
+            label: isAr ? 'التحاليل' : 'Labs',
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.menu_book_rounded),
+            label: isAr ? 'التثقيف' : 'Education',
+          ),
+        ],
       ),
     );
   }
@@ -1044,19 +1064,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
-  Widget _buildSegmentedTabBar(bool isAr) {
-    return DashboardSegmentedTabBar(
-      isAr: isAr,
-      currentTabIndex: _currentTabIndex,
-      onTabSelected: (index) {
-        setState(() => _currentTabIndex = index);
-        if (index == 2) {
-          _maybeShowCriticalAlertPopup();
-        }
-      },
-    );
-  }
-
   void _goToTab(int index) {
     setState(() {
       _currentTabIndex = index;
@@ -1066,68 +1073,23 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
   }
 
-  Widget _buildHomeNavigationButtons(bool isAr) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD9E6DD)),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
-        children: [
-          _HomeNavButton(
-            icon: Icons.home_rounded,
-            label: isAr ? 'الرئيسية' : 'Home',
-            onTap: () => _goToTab(0),
-          ),
-          _HomeNavButton(
-            icon: Icons.restaurant_menu_rounded,
-            label: isAr ? 'الوجبات' : 'Meals',
-            onTap: () => _goToTab(1),
-          ),
-          _HomeNavButton(
-            icon: Icons.science_rounded,
-            label: isAr ? 'التحاليل' : 'Labs',
-            onTap: () => _goToTab(2),
-          ),
-          _HomeNavButton(
-            icon: Icons.menu_book_rounded,
-            label: isAr ? 'التثقيف' : 'Education',
-            onTap: () => _goToTab(3),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildModernOverviewTab(bool isAr) {
-    return Column(
-      children: [
-        _buildHomeNavigationButtons(isAr),
-        OverviewTabView(
-          isAr: isAr,
-          waterAmount: _dashboardViewModel.waterAmount,
-          waterGoal: _dashboardViewModel.waterGoal,
-          greenTeaCount: _dashboardViewModel.greenTeaCount,
-          teaGoal: _dashboardViewModel.teaGoal,
-          chkVitD: _dashboardViewModel.chkVitD,
-          walk30: _dashboardViewModel.walk30,
-          sun15: _dashboardViewModel.sun15,
-          lowFatDay: _dashboardViewModel.lowFatDay,
-          onAddWater: _addWater,
-          onChangeTea: _changeTea,
-          onChkVitDChanged: (value) => _setChecklistValue(chkVitD: value),
-          onWalk30Changed: (value) => _setChecklistValue(walk30: value),
-          onSun15Changed: (value) => _setChecklistValue(sun15: value),
-          onLowFatDayChanged: (value) => _setChecklistValue(lowFatDay: value),
-        ),
-      ],
+    return OverviewTabView(
+      isAr: isAr,
+      waterAmount: _dashboardViewModel.waterAmount,
+      waterGoal: _dashboardViewModel.waterGoal,
+      greenTeaCount: _dashboardViewModel.greenTeaCount,
+      teaGoal: _dashboardViewModel.teaGoal,
+      chkVitD: _dashboardViewModel.chkVitD,
+      walk30: _dashboardViewModel.walk30,
+      sun15: _dashboardViewModel.sun15,
+      lowFatDay: _dashboardViewModel.lowFatDay,
+      onAddWater: _addWater,
+      onChangeTea: _changeTea,
+      onChkVitDChanged: (value) => _setChecklistValue(chkVitD: value),
+      onWalk30Changed: (value) => _setChecklistValue(walk30: value),
+      onSun15Changed: (value) => _setChecklistValue(sun15: value),
+      onLowFatDayChanged: (value) => _setChecklistValue(lowFatDay: value),
     );
   }
 
@@ -1207,50 +1169,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Widget _buildModernEducationTab(bool isAr) {
     return EducationTabView(isAr: isAr);
-  }
-}
-
-class _HomeNavButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _HomeNavButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 74),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEEF5F0),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFCFE2D5)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: const Color(0xFF1B3B2B)),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF1B3B2B),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
