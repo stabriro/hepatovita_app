@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -23,6 +24,7 @@ import 'features/labs/presentation/views/labs_tab_view.dart';
 import 'features/labs/presentation/viewmodels/labs_view_model.dart';
 import 'features/meal_analyzer/presentation/views/meal_analyzer_tab_view.dart';
 import 'features/meal_analyzer/presentation/viewmodels/meal_analyzer_view_model.dart';
+import 'features/meal_analyzer/data/meal_image_extraction_service.dart';
 import 'features/profile/presentation/views/profile_tab_view.dart';
 import 'l10n/app_localizations.dart';
 import 'services/local_notification_service.dart';
@@ -905,6 +907,22 @@ class LabEntry {
   }
 }
 
+class LabDraft {
+  final String metric;
+  final String value;
+  final String unit;
+  final String refRange;
+  final String date;
+
+  const LabDraft({
+    required this.metric,
+    required this.value,
+    required this.unit,
+    required this.refRange,
+    required this.date,
+  });
+}
+
 class MainDashboardScreen extends StatefulWidget {
   final String lang;
   final ValueChanged<String> onLanguageChanged;
@@ -927,67 +945,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   bool _biometricEnabled = false;
   bool _canUseBiometric = false;
 
-  List<LabEntry> _labs = [
-    LabEntry(
-      id: 'l1',
-      metric: 'ALT (SGPT)',
-      value: 58,
-      unit: 'U/L',
-      refRange: '7-56 U/L',
-      status: 'High',
-      date: '2026-08-01',
-      target: 'Target < 40 U/L via low-fat protocol',
-      progressVal: 0.82,
-    ),
-    LabEntry(
-      id: 'l2',
-      metric: 'AST (SGOT)',
-      value: 48,
-      unit: 'U/L',
-      refRange: '10-40 U/L',
-      status: 'High',
-      date: '2026-08-01',
-      target: 'Target < 35 U/L via green tea EGCG',
-      progressVal: 0.75,
-    ),
-    LabEntry(
-      id: 'l3',
-      metric: 'Vitamin D (25-OH)',
-      value: 16,
-      unit: 'ng/mL',
-      refRange: '30-100 ng/mL',
-      status: 'Low',
-      date: '2026-08-01',
-      target: 'Target > 30 ng/mL via D3 + healthy fats',
-      progressVal: 0.28,
-    ),
-    LabEntry(
-      id: 'l4',
-      metric: 'Hemoglobin (Hgb)',
-      value: 17.2,
-      unit: 'g/dL',
-      refRange: '13.8-17.2 g/dL',
-      status: 'High',
-      date: '2026-08-01',
-      target: 'Target 15.0 g/dL via 3.0L daily water',
-      progressVal: 0.88,
-    ),
-    LabEntry(
-      id: 'l5',
-      metric: 'HbA1C',
-      value: 5.0,
-      unit: '%',
-      refRange: '< 5.7 %',
-      status: 'Normal',
-      date: '2026-08-01',
-      target: 'Optimal baseline; sustain with low GI carbs',
-      progressVal: 0.45,
-    ),
-  ];
+  List<LabEntry> _labs = <LabEntry>[];
 
   final TextEditingController _mealSearchController = TextEditingController();
   final DashboardViewModel _dashboardViewModel = DashboardViewModel();
   final MealAnalyzerViewModel _mealAnalyzerViewModel = MealAnalyzerViewModel();
+  final MealImageExtractionService _mealImageExtractionService =
+      MealImageExtractionService();
   Map<String, List<domain.LabHistoryEntity>> _labHistoryByMetric = {};
   final Set<String> _shownCriticalAlertKeys = <String>{};
   final LabsViewModel _labsViewModel = AppDi.provideLabsViewModel();
@@ -1041,6 +1005,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     _dashboardViewModel.removeListener(_onScreenStateChanged);
     _mealAnalyzerViewModel.removeListener(_onScreenStateChanged);
     _labsViewModel.removeListener(_onLabsViewModelChanged);
+    _mealImageExtractionService.dispose();
     _mealSearchController.dispose();
     super.dispose();
   }
@@ -1354,15 +1319,171 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
-  Future<void> _upsertLabEntry({int? index}) async {
+  Future<void> _showAddLabEntryOptions() async {
+    final l10n = AppLocalizations.of(context);
+
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.document_scanner_rounded),
+                title: Text(l10n.tr('add_lab_from_image')),
+                onTap: () => Navigator.of(sheetContext).pop('image'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.edit_note_rounded),
+                title: Text(l10n.tr('add_lab_manual')),
+                onTap: () => Navigator.of(sheetContext).pop('manual'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (choice == 'manual') {
+      await _upsertLabEntry();
+      return;
+    }
+
+    if (choice == 'image') {
+      await _upsertLabEntryFromImage();
+    }
+  }
+
+  Future<void> _upsertLabEntryFromImage() async {
+    final l10n = AppLocalizations.of(context);
+    final source = await _chooseImageSource();
+    if (source == null) {
+      return;
+    }
+
+    final extractedText = await _mealImageExtractionService.extractText(
+      source: source,
+    );
+
+    if (extractedText == null || extractedText.trim().isEmpty) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.tr('lab_image_no_text'))),
+      );
+      return;
+    }
+
+    final draft = _parseLabDraftFromText(extractedText);
+    if (draft == null) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.tr('lab_image_parse_failed'))),
+      );
+      await _upsertLabEntry();
+      return;
+    }
+
+    await _upsertLabEntry(prefill: draft);
+  }
+
+  LabDraft? _parseLabDraftFromText(String text) {
+    final normalized = text.replaceAll(',', '.');
+    final lines = normalized
+        .split(RegExp(r'\r?\n'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    if (lines.isEmpty) {
+      return null;
+    }
+
+    final metricAliases = <String, List<String>>{
+      'ALT (SGPT)': ['alt', 'sgpt'],
+      'AST (SGOT)': ['ast', 'sgot'],
+      'Vitamin D (25-OH)': ['vitamin d', '25-oh', '25 oh'],
+      'Hemoglobin (Hgb)': ['hemoglobin', 'hgb'],
+      'HbA1C': ['hba1c', 'a1c'],
+    };
+
+    String metric = '';
+    String value = '';
+    String unit = '';
+    String refRange = '';
+
+    String candidateLine = lines.first;
+    for (final line in lines) {
+      final lower = line.toLowerCase();
+      for (final entry in metricAliases.entries) {
+        final hasAlias = entry.value.any(lower.contains);
+        if (hasAlias) {
+          metric = entry.key;
+          candidateLine = line;
+          break;
+        }
+      }
+      if (metric.isNotEmpty) {
+        break;
+      }
+    }
+
+    final numberRegex = RegExp(r'(-?\d+(?:\.\d+)?)');
+    final unitRegex = RegExp(r'(U/L|IU/L|mg/dL|mmol/L|ng/mL|g/dL|%)', caseSensitive: false);
+    final rangeRegex = RegExp(
+      r'((?:<|>)\s*\d+(?:\.\d+)?\s*[%A-Za-z/]+?|\d+(?:\.\d+)?\s*-\s*\d+(?:\.\d+)?\s*[%A-Za-z/]+?)',
+      caseSensitive: false,
+    );
+
+    final valueMatch = numberRegex.firstMatch(candidateLine);
+    if (valueMatch != null) {
+      value = valueMatch.group(1) ?? '';
+    }
+
+    final unitMatch = unitRegex.firstMatch(candidateLine);
+    if (unitMatch != null) {
+      unit = unitMatch.group(1)?.toUpperCase() ?? '';
+    }
+
+    final rangeMatch = rangeRegex.firstMatch(normalized);
+    if (rangeMatch != null) {
+      refRange = rangeMatch.group(1) ?? '';
+    }
+
+    if (metric.isEmpty) {
+      metric = candidateLine.split(RegExp(r'\s{2,}|:')).first.trim();
+    }
+
+    final dateMatch = RegExp(r'(\d{4}[-/]\d{1,2}[-/]\d{1,2})').firstMatch(normalized);
+    final parsedDate = dateMatch?.group(1)?.replaceAll('/', '-') ??
+        DateTime.now().toIso8601String().split('T').first;
+
+    if (metric.isEmpty || value.isEmpty) {
+      return null;
+    }
+
+    return LabDraft(
+      metric: metric,
+      value: value,
+      unit: unit,
+      refRange: refRange,
+      date: parsedDate,
+    );
+  }
+
+  Future<void> _upsertLabEntry({int? index, LabDraft? prefill}) async {
     final l10n = AppLocalizations.of(context);
     final existing = index == null ? null : _labs[index];
 
-    final metricController = TextEditingController(text: existing?.metric ?? '');
-    final valueController = TextEditingController(text: existing?.value.toString() ?? '');
-    final unitController = TextEditingController(text: existing?.unit ?? '');
-    final refRangeController = TextEditingController(text: existing?.refRange ?? '');
-    final dateController = TextEditingController(text: existing?.date ?? DateTime.now().toIso8601String().split('T').first);
+    final metricController = TextEditingController(text: prefill?.metric ?? existing?.metric ?? '');
+    final valueController = TextEditingController(text: prefill?.value ?? existing?.value.toString() ?? '');
+    final unitController = TextEditingController(text: prefill?.unit ?? existing?.unit ?? '');
+    final refRangeController = TextEditingController(text: prefill?.refRange ?? existing?.refRange ?? '');
+    final dateController = TextEditingController(text: prefill?.date ?? existing?.date ?? DateTime.now().toIso8601String().split('T').first);
     final targetController = TextEditingController(text: existing?.target ?? '');
     final progressController = TextEditingController(text: ((existing?.progressVal ?? 0.5) * 100).round().toString());
     String editedStatus = existing?.status ?? 'Normal';
@@ -1596,6 +1717,115 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       mealName: mealName,
       isAr: widget.lang == 'ar',
       labs: _labsAsMapList(),
+    );
+  }
+
+  Future<void> _analyzeMealFromBarcodeImage() async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      final source = await _chooseImageSource();
+      if (source == null) {
+        return;
+      }
+
+      final barcode = await _mealImageExtractionService.extractBarcode(
+        source: source,
+      );
+      if (barcode == null || barcode.trim().isEmpty) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.tr('barcode_not_found_in_image')),
+          ),
+        );
+        return;
+      }
+
+      _mealSearchController.text = barcode;
+      await _analyzeMeal(barcode);
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n.tr('barcode_image_analysis_failed', args: {'error': '$e'}),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _analyzeMealFromTextImage() async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      final source = await _chooseImageSource();
+      if (source == null) {
+        return;
+      }
+
+      final extractedText = await _mealImageExtractionService.extractText(
+        source: source,
+      );
+      if (extractedText == null || extractedText.trim().isEmpty) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.tr('text_not_found_in_image')),
+          ),
+        );
+        return;
+      }
+
+      final query = _mealImageExtractionService.pickBestMealQuery(extractedText);
+      if (query.trim().isEmpty) {
+        return;
+      }
+
+      _mealSearchController.text = query;
+      await _analyzeMeal(query);
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n.tr('text_image_analysis_failed', args: {'error': '$e'}),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<ImageSource?> _chooseImageSource() {
+    final l10n = AppLocalizations.of(context);
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_rounded),
+                title: Text(l10n.tr('image_source_camera')),
+                onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: Text(l10n.tr('image_source_gallery')),
+                onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1901,9 +2131,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Widget _buildModernMealAnalyzerTab(bool isAr) {
     return MealAnalyzerTabView(
-      isAr: isAr,
       mealSearchController: _mealSearchController,
       onAnalyzeMeal: _analyzeMeal,
+      onAnalyzeFromBarcode: _analyzeMealFromBarcodeImage,
+      onAnalyzeFromTextImage: _analyzeMealFromTextImage,
+      supportsImageActions: Platform.isAndroid || Platform.isIOS,
       analysis: _toMealAnalysisUiModel(),
       isAnalyzing: _mealAnalyzerViewModel.isAnalyzing,
     );
@@ -1978,7 +2210,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       alerts: _generateLabAlerts(l10n),
       onExportBackup: _exportBackupFile,
       onRestoreBackup: _restoreBackupFile,
-      onAddLab: () => _upsertLabEntry(),
+      onAddLab: _showAddLabEntryOptions,
       onEditLab: (index) => _upsertLabEntry(index: index),
       onDeleteLab: _deleteLabEntry,
       onAddResult: (index) => _addLabResult(_labs[index]),

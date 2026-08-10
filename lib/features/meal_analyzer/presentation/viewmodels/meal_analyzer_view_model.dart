@@ -30,7 +30,11 @@ class MealAnalyzerViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final nutrients = await _nutritionService.searchMeal(mealName);
+      final barcode = _extractBarcodeCandidate(mealName);
+      final nutrients = barcode != null
+          ? await _nutritionService.searchByBarcode(barcode) ??
+              await _nutritionService.searchMeal(mealName)
+          : await _nutritionService.searchMeal(mealName);
       if (nutrients != null) {
         _analyzedResult = _buildFromApi(mealName: mealName, nutrients: nutrients, isAr: isAr);
         return;
@@ -43,6 +47,14 @@ class MealAnalyzerViewModel extends ChangeNotifier {
       _isAnalyzing = false;
       notifyListeners();
     }
+  }
+
+  String? _extractBarcodeCandidate(String input) {
+    final digitsOnly = input.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.length < 8 || digitsOnly.length > 14) {
+      return null;
+    }
+    return digitsOnly;
   }
 
   Map<String, dynamic> _buildFromApi({

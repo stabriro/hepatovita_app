@@ -39,23 +39,31 @@ class OpenFoodFactsService {
     }
 
     final normalized = _normalizeQuery(trimmed);
-    final cached = _recentSearchCache[normalized];
+    final cached = _getFreshCache(normalized);
     if (cached != null) {
-      final isFresh = DateTime.now().difference(cached.cachedAt) <= _cacheTtl;
-      if (isFresh) {
-        _touchCacheEntry(normalized, cached);
-        return cached.result;
-      }
-      _recentSearchCache.remove(normalized);
+      return cached;
     }
 
-    final uri = Uri.parse(ApiConstants.openFoodFactsSearchUrl).replace(queryParameters: {
-      'search_terms': trimmed,
-      'search_simple': '1',
-      'action': 'process',
-      'json': '1',
-      'page_size': '12',
-    });
+    final mapped = await _searchMealRemote(trimmed);
+    _saveCache(normalized, mapped);
+    return mapped;
+  }
+
+  Future<MealNutrients?> searchByBarcode(String barcode) async {
+    final normalizedBarcode = barcode.replaceAll(RegExp(r'[^0-9]'), '');
+    if (normalizedBarcode.length < 8) {
+      return null;
+    }
+
+    final cacheKey = 'barcode:$normalizedBarcode';
+    final cached = _getFreshCache(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+
+    final uri = Uri.parse(
+      '${ApiConstants.openFoodFactsProductUrlPrefix}/$normalizedBarcode.json',
+    );
 
     final response = await http.get(
       uri,
@@ -65,19 +73,62 @@ class OpenFoodFactsService {
     );
 
     if (response.statusCode != 200) {
-      _saveCache(normalized, null);
+      _saveCache(cacheKey, null);
       return null;
     }
 
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, dynamic>) {
-      _saveCache(normalized, null);
+      _saveCache(cacheKey, null);
+      return null;
+    }
+
+    final status = decoded['status'];
+    if (status is! num || status.toInt() != 1) {
+      _saveCache(cacheKey, null);
+      return null;
+    }
+
+    final product = decoded['product'];
+    if (product is! Map<String, dynamic>) {
+      _saveCache(cacheKey, null);
+      return null;
+    }
+
+    final mapped = _mapProduct(product);
+    _saveCache(cacheKey, mapped);
+    return mapped;
+  }
+
+  Future<MealNutrients?> _searchMealRemote(String trimmed) async {
+    final uri = Uri.parse(ApiConstants.openFoodFactsSearchUrl).replace(
+      queryParameters: {
+        'search_terms': trimmed,
+        'search_simple': '1',
+        'action': 'process',
+        'json': '1',
+        'page_size': '12',
+      },
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'User-Agent': ApiConstants.openFoodFactsUserAgent,
+      },
+    );
+
+    if (response.statusCode != 200) {
+      return null;
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
       return null;
     }
 
     final products = decoded['products'];
     if (products is! List) {
-      _saveCache(normalized, null);
       return null;
     }
 
@@ -87,12 +138,23 @@ class OpenFoodFactsService {
       }
       final mapped = _mapProduct(item);
       if (mapped != null) {
-        _saveCache(normalized, mapped);
         return mapped;
       }
     }
 
-    _saveCache(normalized, null);
+    return null;
+  }
+
+  MealNutrients? _getFreshCache(String key) {
+    final cached = _recentSearchCache[key];
+    if (cached != null) {
+      final isFresh = DateTime.now().difference(cached.cachedAt) <= _cacheTtl;
+      if (isFresh) {
+        _touchCacheEntry(key, cached);
+        return cached.result;
+      }
+      _recentSearchCache.remove(key);
+    }
     return null;
   }
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 class MealAnalysisUiModel {
   final String dish;
   final String score;
@@ -39,23 +41,28 @@ class MealAnalysisUiModel {
 }
 
 class MealAnalyzerTabView extends StatelessWidget {
-  final bool isAr;
   final TextEditingController mealSearchController;
   final Future<void> Function(String) onAnalyzeMeal;
+  final Future<void> Function()? onAnalyzeFromBarcode;
+  final Future<void> Function()? onAnalyzeFromTextImage;
+  final bool supportsImageActions;
   final MealAnalysisUiModel? analysis;
   final bool isAnalyzing;
 
   const MealAnalyzerTabView({
     super.key,
-    required this.isAr,
     required this.mealSearchController,
     required this.onAnalyzeMeal,
+    this.onAnalyzeFromBarcode,
+    this.onAnalyzeFromTextImage,
+    this.supportsImageActions = false,
     required this.analysis,
     required this.isAnalyzing,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Container(
@@ -69,14 +76,14 @@ class MealAnalyzerTabView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isAr ? 'مُحلل الوجبات والقوائم الذكي' : 'Smart Meal & Menu Analyzer',
+                l10n.tr('meal_analyzer_title'),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: mealSearchController,
                 decoration: InputDecoration(
-                  hintText: isAr ? 'اكتب اسم أي وجبة (مثل: كبسة، سلمون، شاورما)...' : 'Type ANY meal (e.g. Kabsa, Salmon, Shawarma)...',
+                  hintText: l10n.tr('meal_analyzer_hint'),
                   prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF2E7D32)),
                   filled: true,
                   fillColor: const Color(0xFFF9FBF9),
@@ -102,7 +109,7 @@ class MealAnalyzerTabView extends StatelessWidget {
                           ),
                         )
                       : const Icon(Icons.auto_awesome_rounded),
-                  label: Text(isAr ? 'تحليل الوجبة' : 'Analyze Dish'),
+                  label: Text(l10n.tr('analyze_dish')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B3B2B),
                     foregroundColor: Colors.white,
@@ -111,6 +118,36 @@ class MealAnalyzerTabView extends StatelessWidget {
                   ),
                 ),
               ),
+              if (supportsImageActions) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: isAnalyzing
+                            ? null
+                            : () async {
+                                await onAnalyzeFromBarcode?.call();
+                              },
+                        icon: const Icon(Icons.qr_code_scanner_rounded),
+                        label: Text(l10n.tr('analyze_barcode')),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: isAnalyzing
+                            ? null
+                            : () async {
+                                await onAnalyzeFromTextImage?.call();
+                              },
+                        icon: const Icon(Icons.document_scanner_rounded),
+                        label: Text(l10n.tr('analyze_label_text')),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -146,10 +183,10 @@ class MealAnalyzerTabView extends StatelessWidget {
                   ),
                   child: Text(
                     analysis!.score == 'HIGH'
-                        ? (isAr ? '🟢 صديق للكبد (ممتاز)' : '🟢 LIVER FRIENDLY (EXCELLENT)')
+                      ? '🟢 ${l10n.tr('liver_friendly_excellent')}'
                         : (analysis!.score == 'LOW'
-                            ? (isAr ? '🔴 خطورة أعلى (غيّر الطلب)' : '🔴 HIGHER RISK (CHANGE ORDER)')
-                            : (isAr ? '🟡 خطر متوسط (عدّل الطلب)' : '🟡 MODERATE RISK (MODIFY ORDER)')),
+                        ? '🔴 ${l10n.tr('higher_risk_change_order')}'
+                        : '🟡 ${l10n.tr('moderate_risk_modify_order')}'),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
@@ -166,23 +203,23 @@ class MealAnalyzerTabView extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${isAr ? 'المنتج المطابق' : 'Matched item'}: ${analysis!.matchedName}',
+                  '${l10n.tr('matched_item')}: ${analysis!.matchedName}',
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
                 Text(
-                  '${isAr ? 'مستوى الثقة' : 'Confidence'}: ${analysis!.confidence}',
+                  '${l10n.tr('confidence')}: ${analysis!.confidence}',
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
                 const SizedBox(height: 16),
                 _MacroMetric(
-                  title: isAr ? 'البروتين:' : 'Protein Profile:',
+                  title: '${l10n.tr('protein_profile')}:',
                   subtitle: analysis!.protein,
                   color: Colors.blue,
                   value: 0.8,
                 ),
                 const SizedBox(height: 8),
                 _MacroMetric(
-                  title: isAr ? 'خطورة الدهون:' : 'Fat Risk Level:',
+                  title: '${l10n.tr('fat_risk_level')}:',
                   subtitle: analysis!.fat,
                   color: analysis!.score == 'LOW' ? Colors.red : Colors.green,
                   value: analysis!.score == 'LOW' ? 0.9 : 0.3,
@@ -190,7 +227,7 @@ class MealAnalyzerTabView extends StatelessWidget {
                 if (analysis!.source == 'open_food_facts') ...[
                   const SizedBox(height: 14),
                   Text(
-                    isAr ? 'القيم الغذائية (لكل 100غ):' : 'Nutrition facts (per 100g):',
+                    '${l10n.tr('nutrition_facts_per_100g')}:',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -202,20 +239,20 @@ class MealAnalyzerTabView extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _NutrientChip(label: isAr ? 'طاقة' : 'Energy', value: _fmt(analysis!.kcalPer100g, 'kcal')),
-                      _NutrientChip(label: isAr ? 'بروتين' : 'Protein', value: _fmt(analysis!.proteinPer100g, 'g')),
-                      _NutrientChip(label: isAr ? 'دهون' : 'Fat', value: _fmt(analysis!.fatPer100g, 'g')),
-                      _NutrientChip(label: isAr ? 'دهون مشبعة' : 'Sat Fat', value: _fmt(analysis!.satFatPer100g, 'g')),
-                      _NutrientChip(label: isAr ? 'سكر' : 'Sugar', value: _fmt(analysis!.sugarPer100g, 'g')),
-                      _NutrientChip(label: isAr ? 'صوديوم' : 'Sodium', value: _fmt(analysis!.sodiumMgPer100g, 'mg')),
+                      _NutrientChip(label: l10n.tr('nutrient_energy'), value: _fmt(analysis!.kcalPer100g, 'kcal')),
+                      _NutrientChip(label: l10n.tr('nutrient_protein'), value: _fmt(analysis!.proteinPer100g, 'g')),
+                      _NutrientChip(label: l10n.tr('nutrient_fat'), value: _fmt(analysis!.fatPer100g, 'g')),
+                      _NutrientChip(label: l10n.tr('nutrient_sat_fat'), value: _fmt(analysis!.satFatPer100g, 'g')),
+                      _NutrientChip(label: l10n.tr('nutrient_sugar'), value: _fmt(analysis!.sugarPer100g, 'g')),
+                      _NutrientChip(label: l10n.tr('nutrient_sodium'), value: _fmt(analysis!.sodiumMgPer100g, 'mg')),
                     ],
                   ),
                 ],
                 const Divider(height: 28),
                 Text(
                   analysis!.source == 'open_food_facts'
-                      ? (isAr ? 'تحليل ديناميكي (API مجاني)' : 'Dynamic Analysis (Free API)')
-                      : (isAr ? 'تحليل محلي احتياطي' : 'Local Fallback Analysis'),
+                      ? l10n.tr('dynamic_analysis_free_api')
+                      : l10n.tr('local_fallback_analysis'),
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -233,7 +270,7 @@ class MealAnalyzerTabView extends StatelessWidget {
                     const Icon(Icons.lightbulb_rounded, color: Colors.amber, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      isAr ? 'نصائح وتعديلات الطلب السريرية:' : 'Clinical Ordering Modifications:',
+                      '${l10n.tr('clinical_ordering_modifications')}:',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B3B2B)),
                     ),
                   ],
