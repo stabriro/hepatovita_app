@@ -2,6 +2,26 @@
 
 A new Flutter project.
 
+## Local AI Key Setup
+
+Create a local file at:
+
+config/dart_defines.local.json
+
+Example content:
+
+{
+	"GROK_API_KEY": "your_grok_key_here"
+}
+
+Run app with local key file:
+
+flutter run --dart-define-from-file=config/dart_defines.local.json
+
+Build APK with local key file:
+
+flutter build apk --dart-define-from-file=config/dart_defines.local.json
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
