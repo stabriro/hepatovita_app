@@ -59,7 +59,7 @@ class DashboardActionsCoordinator {
     required bool isAr,
     required List<Map<String, dynamic>> labs,
   }) async {
-    _mealAnalyzerViewModel.analyzeMeal(
+    await _mealAnalyzerViewModel.analyzeMeal(
       mealName: mealName,
       isAr: isAr,
     );

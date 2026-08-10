@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../../data/app_database.dart';
 import '../../features/dashboard/presentation/viewmodels/dashboard_view_model.dart';
@@ -53,6 +57,15 @@ class AppPersistenceCoordinator {
     required String defaultFileName,
     required String dialogTitle,
   }) async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      final tempDir = await getTemporaryDirectory();
+      final resolvedName = defaultFileName.toLowerCase().endsWith('.hvbk')
+          ? defaultFileName
+          : '$defaultFileName.hvbk';
+      final exportPath = p.join(tempDir.path, resolvedName);
+      return _database.exportDatabaseTo(exportPath);
+    }
+
     final path = await FilePicker.platform.saveFile(
       dialogTitle: dialogTitle,
       fileName: defaultFileName,

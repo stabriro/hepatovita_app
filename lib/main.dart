@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -1192,6 +1193,20 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         dialogTitle: l10n.tr('save_sqlite_backup'),
       );
       if (!mounted) return;
+
+      if (Platform.isAndroid || Platform.isIOS) {
+        await Share.shareXFiles(
+          [XFile(savedPath)],
+          subject: 'HepatoVita Backup',
+          text: 'HepatoVita backup (.hvbk)',
+        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.tr('backup_ready_to_share'))),
+        );
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.tr('backup_saved_to', args: {'path': savedPath}))),
       );
@@ -1890,6 +1905,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       mealSearchController: _mealSearchController,
       onAnalyzeMeal: _analyzeMeal,
       analysis: _toMealAnalysisUiModel(),
+      isAnalyzing: _mealAnalyzerViewModel.isAnalyzing,
     );
   }
 
@@ -1902,9 +1918,20 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     return MealAnalysisUiModel(
       dish: (raw['dish'] ?? '').toString(),
       score: (raw['score'] ?? '').toString(),
+      reason: (raw['reason'] ?? '').toString(),
+      confidence: (raw['confidence'] ?? '').toString(),
+      matchedName: (raw['matched_name'] ?? '').toString(),
+      kcalPer100g: (raw['kcal_per_100g'] as num?)?.toDouble(),
+      proteinPer100g: (raw['protein_per_100g'] as num?)?.toDouble(),
+      fatPer100g: (raw['fat_per_100g'] as num?)?.toDouble(),
+      satFatPer100g: (raw['sat_fat_per_100g'] as num?)?.toDouble(),
+      sugarPer100g: (raw['sugar_per_100g'] as num?)?.toDouble(),
+      sodiumMgPer100g: (raw['sodium_mg_per_100g'] as num?)?.toDouble(),
+      caveat: (raw['caveat'] ?? '').toString(),
       protein: (raw['protein'] ?? '').toString(),
       fat: (raw['fat'] ?? '').toString(),
       tips: ((raw['tips'] as List<dynamic>? ?? const <dynamic>[]).map((e) => e.toString()).toList()),
+      source: (raw['source'] ?? 'local_fallback').toString(),
     );
   }
 
