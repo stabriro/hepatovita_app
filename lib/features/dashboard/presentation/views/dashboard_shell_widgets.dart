@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 class DashboardHeader extends StatelessWidget {
   final bool isAr;
   final VoidCallback onMenuPressed;
@@ -14,6 +16,7 @@ class DashboardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -45,7 +48,7 @@ class DashboardHeader extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        isAr ? 'اطمئن' : 'It',
+                        l10n.tr('app_title'),
                         overflow: TextOverflow.ellipsis,
                         textAlign: isAr ? TextAlign.right : TextAlign.left,
                         style: TextStyle(
@@ -56,26 +59,10 @@ class DashboardHeader extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (!isAr) ...[
-                      const SizedBox(width: 3),
-                      Flexible(
-                        child: Text(
-                          'main',
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.left,
-                          style: TextStyle(
-                            fontFamily: isAr ? 'Cairo' : 'Outfit',
-                            fontWeight: FontWeight.w900,
-                            fontSize: 20,
-                            color: const Color(0xFF81C784),
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
                 Text(
-                  isAr ? 'رفيقك الصحي والسريري الكبدي' : 'Metabolic & Liver Companion',
+                  l10n.tr('dashboard_header_subtitle'),
                   overflow: TextOverflow.ellipsis,
                   textAlign: isAr ? TextAlign.right : TextAlign.left,
                   style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500),
@@ -93,7 +80,7 @@ class DashboardHeader extends StatelessWidget {
               border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
             ),
             child: IconButton(
-              tooltip: isAr ? 'القائمة' : 'Menu',
+              tooltip: l10n.tr('menu'),
               onPressed: onMenuPressed,
               icon: const Icon(Icons.menu_rounded, color: Colors.white),
             ),
@@ -107,15 +94,20 @@ class DashboardHeader extends StatelessWidget {
 class DashboardHeroScoreCard extends StatelessWidget {
   final int score;
   final bool isAr;
+  final List<DashboardHeroBiomarkerTag> biomarkerTags;
+  final String emptyBiomarkerText;
 
   const DashboardHeroScoreCard({
     super.key,
     required this.score,
     required this.isAr,
+    required this.biomarkerTags,
+    required this.emptyBiomarkerText,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -140,7 +132,7 @@ class DashboardHeroScoreCard extends StatelessWidget {
               final isCompact = constraints.maxWidth < 320;
 
               final titleText = Text(
-                isAr ? 'الملف الصحي والسريري للمريض' : 'Clinical Patient Profile',
+                l10n.tr('dashboard_profile_title'),
                 maxLines: isCompact ? 3 : 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
@@ -154,7 +146,7 @@ class DashboardHeroScoreCard extends StatelessWidget {
                   border: Border.all(color: Colors.green.shade400.withValues(alpha: 0.4)),
                 ),
                 child: Text(
-                  isAr ? 'مخصص' : 'Targeted',
+                  l10n.tr('dashboard_targeted_badge'),
                   style: const TextStyle(color: Color(0xFF81C784), fontSize: 9, fontWeight: FontWeight.bold),
                 ),
               );
@@ -212,7 +204,7 @@ class DashboardHeroScoreCard extends StatelessWidget {
                           ),
                         const SizedBox(height: 4),
                         Text(
-                          isAr ? 'أهداف علاجية مخصصة بناءً على نتائج تحاليلك' : 'Therapeutic protocol built for your biomarkers',
+                          l10n.tr('dashboard_profile_subtitle'),
                           style: const TextStyle(color: Colors.white70, fontSize: 11),
                         ),
                       ],
@@ -232,22 +224,50 @@ class DashboardHeroScoreCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white10),
             ),
-            child: Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 10,
-              runSpacing: 8,
-              children: [
-                _PillarTag(value: 'ALT 58', label: isAr ? 'إنزيم الكبد' : 'ALT / AST', color: Colors.amber),
-                _PillarTag(value: '16 ng/mL', label: isAr ? 'فيتامين د' : 'Vitamin D', color: Colors.purpleAccent),
-                _PillarTag(value: '3.0L Water', label: isAr ? 'ترطيب Hgb' : 'Hgb Hydration', color: Colors.lightBlueAccent),
-                _PillarTag(value: '5.0%', label: isAr ? 'التراكمي' : 'HbA1C', color: const Color(0xFF81C784)),
-              ],
-            ),
+            child: biomarkerTags.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      emptyBiomarkerText,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  )
+                : Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: biomarkerTags
+                        .map(
+                          (tag) => _PillarTag(
+                            value: tag.value,
+                            label: tag.label,
+                            color: tag.color,
+                          ),
+                        )
+                        .toList(),
+                  ),
           ),
         ],
       ),
     );
   }
+}
+
+class DashboardHeroBiomarkerTag {
+  final String value;
+  final String label;
+  final Color color;
+
+  const DashboardHeroBiomarkerTag({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
 }
 
 class DashboardSegmentedTabBar extends StatelessWidget {
@@ -264,6 +284,7 @@ class DashboardSegmentedTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -276,25 +297,25 @@ class DashboardSegmentedTabBar extends StatelessWidget {
         child: Row(
           children: [
             _TabSegment(
-              title: isAr ? 'الرئيسية والمتتبعات' : 'Dashboard',
+              title: l10n.tr('dashboard_tab_overview'),
               icon: Icons.dashboard_rounded,
               active: currentTabIndex == 0,
               onTap: () => onTabSelected(0),
             ),
             _TabSegment(
-              title: isAr ? 'مُحلل الوجبات' : 'Meal Analyzer',
+              title: l10n.tr('dashboard_tab_meal_analyzer'),
               icon: Icons.restaurant_rounded,
               active: currentTabIndex == 1,
               onTap: () => onTabSelected(1),
             ),
             _TabSegment(
-              title: isAr ? 'الفحوصات' : 'Biomarkers',
+              title: l10n.tr('dashboard_tab_biomarkers'),
               icon: Icons.science_rounded,
               active: currentTabIndex == 2,
               onTap: () => onTabSelected(2),
             ),
             _TabSegment(
-              title: isAr ? 'الدليل الطبي' : 'Guidance',
+              title: l10n.tr('dashboard_tab_guidance'),
               icon: Icons.menu_book_rounded,
               active: currentTabIndex == 3,
               onTap: () => onTabSelected(3),

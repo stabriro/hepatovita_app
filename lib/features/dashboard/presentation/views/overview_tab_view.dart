@@ -89,7 +89,7 @@ class OverviewTabView extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                isAr ? 'مُتتبع شُرب الماء (3.0 لتر)' : '3.0L Hydration Station',
+                                isAr ? 'مُتتبع شُرب الماء' : 'Hydration Tracker',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
@@ -281,11 +281,11 @@ class OverviewTabView extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _CheckTile(
-                title: isAr ? 'مكمل فيتامين د3 (5,000 وحدة)' : 'Vitamin D3 Supplement (5,000 IU)',
-                subtitle: isAr ? 'تناوله مع وجبة تحتوي على دهون صحية' : 'Take with fat-containing meal',
+                title: isAr ? 'مكمل فيتامين د3' : 'Vitamin D3 Supplement',
+                subtitle: isAr ? 'تناوله حسب وصف الطبيب ومع وجبة مناسبة' : 'Take as prescribed with an appropriate meal',
                 value: chkVitD,
                 onChanged: onChkVitDChanged,
-                tag: 'Vit D 16',
+                tag: 'Vit D',
                 tagColor: Colors.purple,
               ),
               _CheckTile(

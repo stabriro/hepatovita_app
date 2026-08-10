@@ -3230,10 +3230,104 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Widget _buildModernHeroScoreCard(int score, bool isAr) {
+    final biomarkerTags = _buildHeroBiomarkerTags(isAr);
     return DashboardHeroScoreCard(
       score: score,
       isAr: isAr,
+      biomarkerTags: biomarkerTags,
+      emptyBiomarkerText: isAr
+          ? 'لا توجد تحاليل بعد. أضف نتائجك لإظهار المؤشرات الحيوية هنا.'
+          : 'No lab tests yet. Add results to show biomarkers here.',
     );
+  }
+
+  List<DashboardHeroBiomarkerTag> _buildHeroBiomarkerTags(bool isAr) {
+    final tags = <DashboardHeroBiomarkerTag>[];
+
+    final liverLab = _findLatestLabByAliases(<String>['alt', 'sgpt', 'ast', 'sgot']);
+    if (liverLab != null) {
+      tags.add(
+        DashboardHeroBiomarkerTag(
+          value: _formatLabValue(liverLab),
+          label: isAr ? 'إنزيم الكبد' : 'ALT / AST',
+          color: Colors.amber,
+        ),
+      );
+    }
+
+    final vitaminDLab = _findLatestLabByAliases(<String>['vitamin d', '25-oh', '25 oh', 'd3']);
+    if (vitaminDLab != null) {
+      tags.add(
+        DashboardHeroBiomarkerTag(
+          value: _formatLabValue(vitaminDLab),
+          label: isAr ? 'فيتامين د' : 'Vitamin D',
+          color: Colors.purpleAccent,
+        ),
+      );
+    }
+
+    final hemoglobinLab = _findLatestLabByAliases(<String>['hemoglobin', 'hgb']);
+    if (hemoglobinLab != null) {
+      tags.add(
+        DashboardHeroBiomarkerTag(
+          value: _formatLabValue(hemoglobinLab),
+          label: isAr ? 'الهيموجلوبين' : 'Hemoglobin',
+          color: Colors.lightBlueAccent,
+        ),
+      );
+    }
+
+    final hba1cLab = _findLatestLabByAliases(<String>['hba1c', 'a1c']);
+    if (hba1cLab != null) {
+      tags.add(
+        DashboardHeroBiomarkerTag(
+          value: _formatLabValue(hba1cLab),
+          label: isAr ? 'التراكمي' : 'HbA1C',
+          color: const Color(0xFF81C784),
+        ),
+      );
+    }
+
+    return tags;
+  }
+
+  LabEntry? _findLatestLabByAliases(List<String> aliases) {
+    if (_labs.isEmpty) {
+      return null;
+    }
+
+    final targetKeys = aliases
+        .map((alias) => LabEntryFlowController.canonicalMetricKey(alias))
+        .toSet();
+
+    final matched = _labs.where((lab) {
+      final key = LabEntryFlowController.canonicalMetricKey(lab.metric);
+      return targetKeys.contains(key);
+    }).toList();
+
+    if (matched.isEmpty) {
+      return null;
+    }
+
+    matched.sort((a, b) {
+      final aDate = _parseLabDate(a.date) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = _parseLabDate(b.date) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bDate.compareTo(aDate);
+    });
+
+    return matched.first;
+  }
+
+  String _formatLabValue(LabEntry lab) {
+    final value = lab.value;
+    final valueText = value == value.roundToDouble()
+        ? value.toStringAsFixed(0)
+        : value.toStringAsFixed(1);
+    final unit = lab.unit.trim();
+    if (unit.isEmpty) {
+      return valueText;
+    }
+    return '$valueText $unit';
   }
 
   void _goToTab(int index) {
