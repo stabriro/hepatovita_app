@@ -93,8 +93,8 @@ class LabEntryFlowController {
   }
 
   static List<LabDraft> parseLabDraftsFromText(String text) {
-    final normalized = text.replaceAll(',', '.');
-    final lines = normalized
+    final raw = text.replaceAll('\u00A0', ' ');
+    final lines = raw
         .split(RegExp(r'\r?\n'))
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
@@ -104,66 +104,105 @@ class LabEntryFlowController {
       return const <LabDraft>[];
     }
 
-    final numberRegex = RegExp(r'(-?\d+(?:\.\d+)?)');
-    final unitRegex = RegExp(
-      r'(U/L|IU/L|mg/dL|mmol/L|ng/mL|g/dL|%|10\^9/L|x10\^9/L)',
-      caseSensitive: false,
-    );
-    final rangeRegex = RegExp(
-      r'((?:<|>)\s*\d+(?:\.\d+)?\s*[%A-Za-z/]+?|\d+(?:\.\d+)?\s*-\s*\d+(?:\.\d+)?\s*[%A-Za-z/]+?)',
-      caseSensitive: false,
-    );
-    final dateRegex = RegExp(r'(\d{4}[-/]\d{1,2}[-/]\d{1,2})');
-
-    final allDates = dateRegex
-        .allMatches(normalized)
-        .map((m) => m.group(1) ?? '')
-        .where((e) => e.isNotEmpty)
-        .map(_normalizeDateToken)
-        .toList();
-
-    String currentDate = allDates.isNotEmpty
-        ? allDates.first
-        : DateTime.now().toIso8601String().split('T').first;
-
     final drafts = <LabDraft>[];
+    String currentDate = DateTime.now().toIso8601String().split('T').first;
 
-    for (final line in lines) {
-      final dateMatch = dateRegex.firstMatch(line);
-      if (dateMatch != null) {
-        currentDate = _normalizeDateToken(dateMatch.group(1) ?? currentDate);
+    String? currentMetric;
+    String currentValue = '';
+    String currentUnit = '';
+    String currentRefRange = '';
+    String currentDraftDate = '';
+
+    void pushCurrentDraft() {
+      if (currentMetric == null) {
+        return;
       }
-
-      final metric = _resolveMetricName(line);
-      if (metric == null) {
-        continue;
+      final metric = _resolveMetricName(currentMetric);
+      final parsedNumeric = _extractNumericValue(currentValue);
+      if (metric == null || parsedNumeric == null) {
+        return;
       }
-
-      final cleanLine = line.replaceAll(dateRegex, ' ');
-      final numericMatches = numberRegex
-          .allMatches(cleanLine)
-          .map((m) => m.group(1) ?? '')
-          .where((s) => s.isNotEmpty)
-          .toList();
-
-      if (numericMatches.isEmpty) {
-        continue;
-      }
-
-      final value = numericMatches.first;
-      final unit = (unitRegex.firstMatch(line)?.group(1) ?? '').toUpperCase();
-      final refRange = rangeRegex.firstMatch(line)?.group(1) ?? '';
 
       drafts.add(
         LabDraft(
           metric: metric,
-          value: value,
-          unit: unit,
-          refRange: refRange,
-          date: currentDate,
+          value: parsedNumeric,
+          unit: currentUnit,
+          refRange: currentRefRange,
+          date: currentDraftDate.isEmpty ? currentDate : currentDraftDate,
         ),
       );
     }
+
+    for (final line in lines) {
+      final normalizedLine = line.replaceAll(RegExp(r'\s+'), ' ').trim();
+      if (normalizedLine.isEmpty) {
+        continue;
+      }
+
+      final dateFromLine = _extractDateFromLine(normalizedLine);
+      if (dateFromLine != null) {
+        currentDate = dateFromLine;
+        if (currentMetric != null) {
+          currentDraftDate = dateFromLine;
+        }
+      }
+
+      if (_isNoiseLine(normalizedLine)) {
+        continue;
+      }
+
+      if (_isMetricLine(normalizedLine)) {
+        pushCurrentDraft();
+        currentMetric = normalizedLine;
+        currentValue = '';
+        currentUnit = '';
+        currentRefRange = '';
+        currentDraftDate = '';
+        continue;
+      }
+
+      if (currentMetric == null) {
+        continue;
+      }
+
+      final lower = normalizedLine.toLowerCase();
+      if (lower.startsWith('value:')) {
+        final valueText = normalizedLine.substring(6).trim();
+        final parsed = _extractNumericAndUnit(valueText);
+        if (parsed != null) {
+          currentValue = parsed.$1;
+          currentUnit = parsed.$2;
+        }
+        continue;
+      }
+
+      if (lower.startsWith('reference range:')) {
+        currentRefRange = normalizedLine.substring(16).trim();
+        continue;
+      }
+
+      if (lower.startsWith('pending until')) {
+        // Pending results are non-numeric and should not overwrite current value.
+        continue;
+      }
+
+      // OCR can split range/date/value across lines without labels.
+      if (currentRefRange.isEmpty && _looksLikeReferenceRange(normalizedLine)) {
+        currentRefRange = normalizedLine;
+        continue;
+      }
+
+      if (currentValue.isEmpty) {
+        final parsed = _extractNumericAndUnit(normalizedLine);
+        if (parsed != null) {
+          currentValue = parsed.$1;
+          currentUnit = parsed.$2;
+        }
+      }
+    }
+
+    pushCurrentDraft();
 
     final dedup = <String, LabDraft>{};
     for (final draft in drafts) {
@@ -175,6 +214,15 @@ class LabEntryFlowController {
   }
 
   static String? _resolveMetricName(String line) {
+    final cleaned = line
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'\s*[:\-–]+\s*$'), '')
+        .trim();
+
+    if (cleaned.isEmpty) {
+      return null;
+    }
+
     final lower = line.toLowerCase();
     for (final entry in _metricAliases.entries) {
       final hasAlias = entry.value.any((alias) => lower.contains(alias));
@@ -182,7 +230,9 @@ class LabEntryFlowController {
         return entry.key;
       }
     }
-    return null;
+
+    // Keep unknown metrics instead of dropping them, to support wider clinic schemas.
+    return cleaned;
   }
 
   static String canonicalMetricKey(String metric) {
@@ -214,5 +264,121 @@ class LabEntryFlowController {
     final month = parts[1].padLeft(2, '0');
     final day = parts[2].padLeft(2, '0');
     return '$year-$month-$day';
+  }
+
+  static String normalizeDateInput(String raw, {String? fallbackIso}) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      return fallbackIso ?? DateTime.now().toIso8601String().split('T').first;
+    }
+
+    final extracted = _extractDateFromLine(trimmed);
+    if (extracted != null) {
+      return extracted;
+    }
+
+    final yyyyMmDd = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+    if (yyyyMmDd.hasMatch(trimmed)) {
+      return trimmed;
+    }
+
+    return fallbackIso ?? DateTime.now().toIso8601String().split('T').first;
+  }
+
+  static bool _isNoiseLine(String line) {
+    final lower = line.toLowerCase();
+    return lower == 'lab results' || lower == 'help' || lower == 'value';
+  }
+
+  static bool _isMetricLine(String line) {
+    if (line.endsWith(':')) {
+      return false;
+    }
+
+    final lower = line.toLowerCase();
+    if (lower.startsWith('value:') ||
+        lower.startsWith('reference range:') ||
+        lower.startsWith('pending until')) {
+      return false;
+    }
+
+    if (_extractDateFromLine(line) != null) {
+      return false;
+    }
+
+    if (RegExp(r'^[-+]?\d').hasMatch(line)) {
+      return false;
+    }
+
+    // Most metric names have letters and are short title-like lines.
+    final hasLetters = RegExp(r'[A-Za-z]').hasMatch(line);
+    final wordCount = line.split(RegExp(r'\s+')).length;
+    return hasLetters && wordCount <= 8 && line.length <= 64;
+  }
+
+  static String? _extractNumericValue(String text) {
+    final match = RegExp(r'(-?\d+(?:\.\d+)?)').firstMatch(text);
+    return match?.group(1);
+  }
+
+  static (String, String)? _extractNumericAndUnit(String text) {
+    final numberMatch = RegExp(r'(-?\d+(?:\.\d+)?)').firstMatch(text);
+    if (numberMatch == null) {
+      return null;
+    }
+
+    final value = numberMatch.group(1) ?? '';
+    final unitPart = text.substring(numberMatch.end).trim();
+    final unit = unitPart
+        .replaceAll(RegExp(r'^(\)|\]|\}|,|;)+'), '')
+        .trim();
+    return (value, unit);
+  }
+
+  static bool _looksLikeReferenceRange(String line) {
+    return RegExp(
+      r'(<\s*\d+(?:\.\d+)?|>\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*-\s*\d+(?:\.\d+)?)',
+      caseSensitive: false,
+    ).hasMatch(line);
+  }
+
+  static String? _extractDateFromLine(String line) {
+    final isoLike = RegExp(r'(\d{4}[-/]\d{1,2}[-/]\d{1,2})').firstMatch(line);
+    if (isoLike != null) {
+      return _normalizeDateToken(isoLike.group(1) ?? '');
+    }
+
+    final namedMonth = RegExp(
+      r'\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\w*\s+(\d{4})\b',
+      caseSensitive: false,
+    ).firstMatch(line);
+    if (namedMonth == null) {
+      return null;
+    }
+
+    final day = int.tryParse(namedMonth.group(1) ?? '');
+    final monthRaw = (namedMonth.group(2) ?? '').toLowerCase();
+    final year = int.tryParse(namedMonth.group(3) ?? '');
+    final monthMap = <String, int>{
+      'jan': 1,
+      'feb': 2,
+      'mar': 3,
+      'apr': 4,
+      'may': 5,
+      'jun': 6,
+      'jul': 7,
+      'aug': 8,
+      'sep': 9,
+      'sept': 9,
+      'oct': 10,
+      'nov': 11,
+      'dec': 12,
+    };
+    final month = monthMap[monthRaw];
+    if (day == null || month == null || year == null) {
+      return null;
+    }
+
+    return '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
   }
 }

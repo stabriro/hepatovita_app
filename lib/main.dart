@@ -2457,7 +2457,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 const SizedBox(height: 10),
                 TextField(
                   controller: dateController,
-                  decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+                  decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD or 3 Aug 2026)'),
                 ),
               ],
             ),
@@ -2549,9 +2549,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     final resolvedRefRange = draft.refRange.trim().isEmpty
         ? (existing?.refRange ?? '')
         : draft.refRange.trim();
-    final resolvedDate = draft.date.trim().isEmpty
-        ? DateTime.now().toIso8601String().split('T').first
-        : draft.date.trim();
+    final resolvedDate = LabEntryFlowController.normalizeDateInput(
+      draft.date,
+      fallbackIso: DateTime.now().toIso8601String().split('T').first,
+    );
     final resolvedStatus = _autoStatusFromRange(parsedValue, resolvedRefRange);
 
     final updated = LabEntry(
@@ -2620,7 +2621,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 const SizedBox(height: 10),
                 TextField(
                   controller: dateController,
-                  decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+                  decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD or 3 Aug 2026)'),
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -2656,9 +2657,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         final parsedValue = double.tryParse(valueController.text.trim()) ?? (existing?.value ?? 0);
         final progressPct = double.tryParse(progressController.text.trim()) ?? ((existing?.progressVal ?? 0.5) * 100);
         final clampedProgress = (progressPct / 100).clamp(0.0, 1.0);
-        final parsedDate = dateController.text.trim().isEmpty
-            ? (existing?.date ?? DateTime.now().toIso8601String().split('T').first)
-            : dateController.text.trim();
+        final parsedDate = LabEntryFlowController.normalizeDateInput(
+          dateController.text,
+          fallbackIso:
+              existing?.date ?? DateTime.now().toIso8601String().split('T').first,
+        );
 
         final resolvedRefRange = refRangeController.text.trim().isEmpty ? (existing?.refRange ?? '') : refRangeController.text.trim();
         editedStatus = _autoStatusFromRange(parsedValue, resolvedRefRange);
@@ -2743,7 +2746,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               const SizedBox(height: 10),
               TextField(
                 controller: dateController,
-                decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)'),
+                decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD or 3 Aug 2026)'),
               ),
             ],
           ),
@@ -2763,7 +2766,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
     if (didSave == true) {
       final parsedValue = double.tryParse(valueController.text.trim()) ?? lab.value;
-      final parsedDate = dateController.text.trim().isEmpty ? DateTime.now().toIso8601String().split('T').first : dateController.text.trim();
+      final parsedDate = LabEntryFlowController.normalizeDateInput(
+        dateController.text,
+        fallbackIso: DateTime.now().toIso8601String().split('T').first,
+      );
       editedStatus = _autoStatusFromRange(parsedValue, lab.refRange);
 
       final updated = lab.copyWith(
