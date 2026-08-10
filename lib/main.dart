@@ -223,7 +223,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
   }
 
   Future<void> _recoverWithRecoveryCode() async {
-    final isAr = _locale.languageCode == 'ar';
+    final l10n = AppLocalizations.of(context);
     final codeController = TextEditingController();
     String? localError;
 
@@ -233,21 +233,19 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
         return StatefulBuilder(
           builder: (context, setInnerState) {
             return AlertDialog(
-              title: Text(isAr ? 'استعادة باستخدام الرمز' : 'Recover With Code'),
+              title: Text(l10n.tr('recover_with_code_title')),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    isAr
-                        ? 'أدخل رمز الاستعادة المكون من 3 مجموعات (مثال: 1234-5678-9012).'
-                        : 'Enter your 3-part recovery code (example: 1234-5678-9012).',
+                    l10n.tr('recover_with_code_hint'),
                     style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: codeController,
                     decoration: InputDecoration(
-                      labelText: isAr ? 'رمز الاستعادة' : 'Recovery Code',
+                      labelText: l10n.tr('recovery_code_label'),
                     ),
                     textCapitalization: TextCapitalization.characters,
                   ),
@@ -263,7 +261,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: Text(isAr ? 'إلغاء' : 'Cancel'),
+                  child: Text(l10n.tr('cancel')),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -271,7 +269,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
                     final ok = await _appLockService.verifyRecoveryCode(candidate);
                     if (!ok) {
                       setInnerState(() {
-                        localError = isAr ? 'رمز الاستعادة غير صحيح' : 'Invalid recovery code';
+                        localError = l10n.tr('recovery_code_invalid');
                       });
                       return;
                     }
@@ -280,7 +278,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
                     }
                     Navigator.of(dialogContext).pop(true);
                   },
-                  child: Text(isAr ? 'تحقق' : 'Verify'),
+                  child: Text(l10n.tr('verify')),
                 ),
               ],
             );
@@ -300,7 +298,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
   }
 
   Future<void> _showRecoveryCodeDialog(String code) async {
-    final isAr = _locale.languageCode == 'ar';
+    final l10n = AppLocalizations.of(context);
     if (!mounted) {
       return;
     }
@@ -310,15 +308,13 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
       barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(isAr ? 'احفظ رمز الاستعادة' : 'Save Recovery Code'),
+          title: Text(l10n.tr('save_recovery_code_title')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isAr
-                    ? 'استخدم هذا الرمز لإعادة تعيين PIN إذا نسيته.'
-                    : 'Use this code to reset PIN if you forget it.',
+                l10n.tr('save_recovery_code_hint'),
               ),
               const SizedBox(height: 10),
               SelectableText(
@@ -331,9 +327,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
               ),
               const SizedBox(height: 10),
               Text(
-                isAr
-                    ? 'احتفظ به في مكان آمن. سيتم تغييره عند تغيير PIN.'
-                    : 'Store it safely. It will rotate when PIN changes.',
+                l10n.tr('save_recovery_code_footer'),
                 style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
               ),
             ],
@@ -341,7 +335,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
           actions: [
             ElevatedButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(isAr ? 'تم' : 'Done'),
+              child: Text(l10n.tr('done')),
             ),
           ],
         );
@@ -717,7 +711,7 @@ class _SecurityUnlockScreenState extends State<SecurityUnlockScreen> {
                       TextButton(
                         onPressed: widget.onForgotPin,
                         child: Text(
-                          widget.isAr ? 'نسيت PIN؟' : 'Forgot PIN?',
+                          AppLocalizations.of(context).tr('forgot_pin'),
                         ),
                       ),
                       if (widget.enableBiometric) ...[
@@ -1737,20 +1731,18 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Future<void> _showRecoveryCodeDialogFromProfile(String code) async {
-    final isAr = widget.lang == 'ar';
+    final l10n = AppLocalizations.of(context);
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(isAr ? 'رمز الاستعادة الجديد' : 'New Recovery Code'),
+          title: Text(l10n.tr('new_recovery_code_title')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isAr
-                    ? 'احفظ الرمز التالي لاستعادة PIN عند نسيانه:'
-                    : 'Save this code to recover your PIN if forgotten:',
+                l10n.tr('new_recovery_code_hint'),
               ),
               const SizedBox(height: 10),
               SelectableText(
@@ -1766,7 +1758,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           actions: [
             ElevatedButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(isAr ? 'تم' : 'Done'),
+              child: Text(l10n.tr('done')),
             ),
           ],
         );
