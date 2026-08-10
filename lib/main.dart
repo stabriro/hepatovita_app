@@ -32,6 +32,10 @@ import 'features/meal_analyzer/presentation/views/meal_analyzer_tab_view.dart';
 import 'features/meal_analyzer/presentation/controllers/meal_image_analysis_controller.dart';
 import 'features/meal_analyzer/presentation/viewmodels/meal_analyzer_view_model.dart';
 import 'features/meal_analyzer/data/meal_image_extraction_service.dart';
+import 'features/nutrition_plan/data/weekly_nutrition_plan_storage.dart';
+import 'features/nutrition_plan/data/free_mealdb_service.dart';
+import 'features/nutrition_plan/domain/weekly_nutrition_rule_engine.dart';
+import 'features/nutrition_plan/presentation/views/weekly_nutrition_plan_tab_view.dart';
 import 'features/profile/presentation/views/profile_tab_view.dart';
 import 'l10n/app_localizations.dart';
 import 'services/local_notification_service.dart';
@@ -1137,6 +1141,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   List<LabEntry> _labs = <LabEntry>[];
   List<MedicationSchedule> _medications = <MedicationSchedule>[];
+  WeeklyNutritionPlan? _weeklyNutritionPlan;
 
   final TextEditingController _mealSearchController = TextEditingController();
   final DashboardViewModel _dashboardViewModel = DashboardViewModel();
@@ -1153,6 +1158,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final AppSettingsService _appSettingsService = AppSettingsService.instance;
   final MedicationSchedulerService _medicationSchedulerService =
       MedicationSchedulerService();
+    final WeeklyNutritionRuleEngine _weeklyNutritionRuleEngine =
+      WeeklyNutritionRuleEngine();
+    final WeeklyNutritionPlanStorage _weeklyNutritionPlanStorage =
+      WeeklyNutritionPlanStorage();
+      final FreeMealDbService _freeMealDbService = FreeMealDbService();
   late final DashboardActionsCoordinator _dashboardActionsCoordinator =
       AppDi.provideDashboardActionsCoordinator(
         dashboardViewModel: _dashboardViewModel,
@@ -1172,6 +1182,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     _labsViewModel.addListener(_onLabsViewModelChanged);
     _loadPersistedState();
     _loadMedicationSchedules();
+    _loadWeeklyNutritionPlan();
     _loadProfileSettings();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _labsViewModel.load();
@@ -1522,6 +1533,98 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     });
     if (_notificationsEnabled) {
       await _scheduleMedicationReminders(loaded);
+    }
+  }
+
+  Future<void> _loadWeeklyNutritionPlan() async {
+    final loaded = await _weeklyNutritionPlanStorage.load();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _weeklyNutritionPlan = loaded;
+    });
+  }
+
+  Future<void> _saveWeeklyNutritionPlan(WeeklyNutritionPlan plan) async {
+    await _weeklyNutritionPlanStorage.save(plan);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _weeklyNutritionPlan = plan;
+    });
+  }
+
+  Future<void> _generateWeeklyNutritionPlan() async {
+    final signals = _labs
+        .map(
+          (lab) => NutritionLabSignal(
+            metric: lab.metric,
+            value: lab.value,
+            status: lab.status,
+          ),
+        )
+        .toList();
+
+    final generated = _weeklyNutritionRuleEngine.generate(
+      isAr: widget.lang == 'ar',
+      labs: signals,
+    );
+
+    final enriched = await _enrichPlanWithFreeApi(generated);
+
+    await _saveWeeklyNutritionPlan(enriched);
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          widget.lang == 'ar'
+              ? 'تم إنشاء الخطة الغذائية الأسبوعية.'
+              : 'Weekly nutrition plan generated.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _regenerateWeeklyNutritionPlan() async {
+    await _generateWeeklyNutritionPlan();
+  }
+
+  Future<WeeklyNutritionPlan> _enrichPlanWithFreeApi(
+    WeeklyNutritionPlan plan,
+  ) async {
+    try {
+      final prefersSeafood = plan.ruleFlags.contains('liver_protect') ||
+          plan.ruleFlags.contains('vit_d_support');
+      final category = prefersSeafood ? 'Seafood' : 'Chicken';
+      final meals = await _freeMealDbService.fetchMealsByCategory(category);
+      if (meals.isEmpty) {
+        return plan;
+      }
+
+      final seededOffset = DateTime.now().weekday % meals.length;
+      final updatedDays = <DailyNutritionPlan>[];
+      for (int i = 0; i < plan.days.length; i++) {
+        final meal = meals[(seededOffset + i) % meals.length];
+        final day = plan.days[i];
+        updatedDays.add(
+          day.copyWith(
+            composition: day.composition.copyWith(
+              dishName: meal.name,
+              dishImageUrl: meal.imageUrl,
+            ),
+          ),
+        );
+      }
+
+      return plan.copyWith(days: updatedDays);
+    } catch (_) {
+      return plan;
     }
   }
 
@@ -2737,6 +2840,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 label: isAr ? 'الأدوية' : 'Meds',
               ),
               NavigationDestination(
+                icon: const Icon(Icons.calendar_month_rounded),
+                label: isAr ? 'الخطة الأسبوعية' : 'Weekly Plan',
+              ),
+              NavigationDestination(
                 icon: const Icon(Icons.person_rounded),
                 label: isAr ? 'الملف' : 'Profile',
               ),
@@ -2760,6 +2867,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       case 4:
         return _buildModernMedicationTab(isAr);
       case 5:
+        return _buildWeeklyNutritionPlanTab(isAr);
+      case 6:
         return _buildModernProfileTab(isAr);
       default:
         return _buildModernOverviewTab(isAr);
@@ -2958,6 +3067,33 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         unawaited(_openMedicationEditor());
       },
       todayKey: _todayKey(),
+    );
+  }
+
+  Widget _buildWeeklyNutritionPlanTab(bool isAr) {
+    return WeeklyNutritionPlanTabView(
+      isAr: isAr,
+      plan: _weeklyNutritionPlan,
+      onGenerate: () {
+        unawaited(_generateWeeklyNutritionPlan());
+      },
+      onRegenerate: () {
+        unawaited(_regenerateWeeklyNutritionPlan());
+      },
+      onSave: () {
+        final plan = _weeklyNutritionPlan;
+        if (plan == null) {
+          return;
+        }
+        unawaited(_saveWeeklyNutritionPlan(plan));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isAr ? 'تم حفظ الخطة الأسبوعية.' : 'Weekly plan saved.',
+            ),
+          ),
+        );
+      },
     );
   }
 
