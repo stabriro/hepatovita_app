@@ -25,6 +25,9 @@ import 'features/labs/presentation/models/lab_entry_models.dart';
 import 'features/labs/presentation/presenters/lab_alert_presenter.dart';
 import 'features/labs/presentation/views/labs_tab_view.dart';
 import 'features/labs/presentation/viewmodels/labs_view_model.dart';
+import 'features/medication/data/medication_scheduler_service.dart';
+import 'features/medication/presentation/models/medication_schedule_model.dart';
+import 'features/medication/presentation/views/medication_tab_view.dart';
 import 'features/meal_analyzer/presentation/views/meal_analyzer_tab_view.dart';
 import 'features/meal_analyzer/presentation/controllers/meal_image_analysis_controller.dart';
 import 'features/meal_analyzer/presentation/viewmodels/meal_analyzer_view_model.dart';
@@ -1133,6 +1136,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   bool _isEvaluatingSmartReminders = false;
 
   List<LabEntry> _labs = <LabEntry>[];
+  List<MedicationSchedule> _medications = <MedicationSchedule>[];
 
   final TextEditingController _mealSearchController = TextEditingController();
   final DashboardViewModel _dashboardViewModel = DashboardViewModel();
@@ -1147,6 +1151,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final PdfReportService _pdfReportService = PdfReportService();
   final AppLockService _appLockService = AppLockService.instance;
   final AppSettingsService _appSettingsService = AppSettingsService.instance;
+  final MedicationSchedulerService _medicationSchedulerService =
+      MedicationSchedulerService();
   late final DashboardActionsCoordinator _dashboardActionsCoordinator =
       AppDi.provideDashboardActionsCoordinator(
         dashboardViewModel: _dashboardViewModel,
@@ -1165,6 +1171,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     _mealAnalyzerViewModel.addListener(_onScreenStateChanged);
     _labsViewModel.addListener(_onLabsViewModelChanged);
     _loadPersistedState();
+    _loadMedicationSchedules();
     _loadProfileSettings();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _labsViewModel.load();
@@ -1503,6 +1510,294 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Future<void> _loadPersistedState() async {
     await _dashboardActionsCoordinator.loadPersistedState();
     await _applyPendingHomeWidgetActions();
+  }
+
+  Future<void> _loadMedicationSchedules() async {
+    final loaded = await _medicationSchedulerService.loadSchedules();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _medications = loaded;
+    });
+    if (_notificationsEnabled) {
+      await _scheduleMedicationReminders(loaded);
+    }
+  }
+
+  Future<void> _saveMedicationSchedules(List<MedicationSchedule> items) async {
+    await _medicationSchedulerService.saveSchedules(items);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _medications = items;
+    });
+
+    if (_notificationsEnabled) {
+      await _scheduleMedicationReminders(items);
+    } else {
+      await _cancelMedicationReminders(items);
+    }
+  }
+
+  Future<void> _scheduleMedicationReminders(
+    List<MedicationSchedule> items,
+  ) async {
+    if (!(Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isLinux)) {
+      return;
+    }
+
+    for (final med in items) {
+      final id = _medicationNotificationId(med.id);
+      await LocalNotificationService.instance.cancelScheduledNotification(id);
+      if (!med.enabled) {
+        continue;
+      }
+      await LocalNotificationService.instance.scheduleDailyMedicationReminder(
+        id: id,
+        title: widget.lang == 'ar'
+            ? 'تذكير الدواء: ${med.name}'
+            : 'Medication Reminder: ${med.name}',
+        body: widget.lang == 'ar'
+            ? 'حان وقت جرعة ${med.dose} (${med.timeLabel})'
+            : 'Time for ${med.dose} at ${med.timeLabel}',
+        hour: med.hour,
+        minute: med.minute,
+      );
+    }
+  }
+
+  Future<void> _cancelMedicationReminders(
+    List<MedicationSchedule> items,
+  ) async {
+    if (!(Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isLinux)) {
+      return;
+    }
+
+    for (final med in items) {
+      await LocalNotificationService.instance.cancelScheduledNotification(
+        _medicationNotificationId(med.id),
+      );
+    }
+  }
+
+  int _medicationNotificationId(String medicationId) {
+    return 600000 + (medicationId.hashCode.abs() % 100000);
+  }
+
+  String _todayKey() {
+    final now = DateTime.now();
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    return '${now.year}-$month-$day';
+  }
+
+  Future<void> _toggleMedicationTaken(String id) async {
+    final today = _todayKey();
+    final updated = _medications.map((m) {
+      if (m.id != id) {
+        return m;
+      }
+      final isTakenToday = m.takenDayKey == today;
+      return m.copyWith(
+        takenDayKey: isTakenToday ? null : today,
+        clearTakenDayKey: isTakenToday,
+      );
+    }).toList();
+
+    await _saveMedicationSchedules(updated);
+  }
+
+  Future<void> _toggleMedicationEnabled(String id) async {
+    final updated = _medications.map((m) {
+      if (m.id != id) {
+        return m;
+      }
+      return m.copyWith(enabled: !m.enabled);
+    }).toList();
+
+    await _saveMedicationSchedules(updated);
+  }
+
+  Future<void> _deleteMedication(String id) async {
+    final isAr = widget.lang == 'ar';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isAr ? 'حذف الدواء؟' : 'Delete medication?'),
+        content: Text(
+          isAr
+              ? 'سيتم حذف الدواء وجدوله اليومي.'
+              : 'This removes the medication and its daily schedule.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(isAr ? 'إلغاء' : 'Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(isAr ? 'حذف' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) {
+      return;
+    }
+
+    final removed = _medications.firstWhere((m) => m.id == id);
+    await LocalNotificationService.instance.cancelScheduledNotification(
+      _medicationNotificationId(removed.id),
+    );
+
+    final updated = _medications.where((m) => m.id != id).toList();
+    await _saveMedicationSchedules(updated);
+  }
+
+  Future<void> _openMedicationEditor({String? medicationId}) async {
+    final isAr = widget.lang == 'ar';
+    final existing = medicationId == null
+        ? null
+        : _medications.firstWhere((m) => m.id == medicationId);
+
+    final nameController =
+        TextEditingController(text: existing?.name ?? '');
+    final doseController =
+        TextEditingController(text: existing?.dose ?? '');
+    TimeOfDay selectedTime = TimeOfDay(
+      hour: existing?.hour ?? 8,
+      minute: existing?.minute ?? 0,
+    );
+
+    final save = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setInnerState) {
+            return AlertDialog(
+              title: Text(
+                existing == null
+                    ? (isAr ? 'إضافة دواء' : 'Add Medication')
+                    : (isAr ? 'تعديل الدواء' : 'Edit Medication'),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText:
+                            isAr ? 'اسم الدواء' : 'Medication Name',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: doseController,
+                      decoration: InputDecoration(
+                        labelText:
+                            isAr ? 'الجرعة (مثال: 500mg)' : 'Dose (e.g. 500mg)',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: dialogContext,
+                          initialTime: selectedTime,
+                        );
+                        if (picked == null) {
+                          return;
+                        }
+                        setInnerState(() {
+                          selectedTime = picked;
+                        });
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFCBD5E1)),
+                        ),
+                        child: Text(
+                          '${isAr ? 'وقت التذكير' : 'Reminder Time'}: ${selectedTime.format(dialogContext)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(isAr ? 'إلغاء' : 'Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(isAr ? 'حفظ' : 'Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (save == true) {
+      final name = nameController.text.trim();
+      final dose = doseController.text.trim();
+      if (name.isEmpty || dose.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isAr
+                    ? 'الاسم والجرعة مطلوبان.'
+                    : 'Name and dose are required.',
+              ),
+            ),
+          );
+        }
+      } else {
+        final model = MedicationSchedule(
+          id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+          name: name,
+          dose: dose,
+          hour: selectedTime.hour,
+          minute: selectedTime.minute,
+          enabled: existing?.enabled ?? true,
+          takenDayKey: existing?.takenDayKey,
+        );
+
+        final updated = [..._medications];
+        final index = updated.indexWhere((m) => m.id == model.id);
+        if (index == -1) {
+          updated.add(model);
+        } else {
+          updated[index] = model;
+        }
+
+        await _saveMedicationSchedules(updated);
+      }
+    }
+
+    nameController.dispose();
+    doseController.dispose();
   }
 
   Future<void> _loadLabHistory() async {
@@ -2187,6 +2482,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     });
     if (enabled) {
       _requestSmartReminderEvaluation();
+      await _scheduleMedicationReminders(_medications);
+    } else {
+      await _cancelMedicationReminders(_medications);
     }
   }
 
@@ -2435,6 +2733,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 label: isAr ? 'التثقيف' : 'Education',
               ),
               NavigationDestination(
+                icon: const Icon(Icons.medication_rounded),
+                label: isAr ? 'الأدوية' : 'Meds',
+              ),
+              NavigationDestination(
                 icon: const Icon(Icons.person_rounded),
                 label: isAr ? 'الملف' : 'Profile',
               ),
@@ -2456,6 +2758,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       case 3:
         return _buildModernEducationTab(isAr);
       case 4:
+        return _buildModernMedicationTab(isAr);
+      case 5:
         return _buildModernProfileTab(isAr);
       default:
         return _buildModernOverviewTab(isAr);
@@ -2632,6 +2936,29 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Widget _buildModernEducationTab(bool isAr) {
     return EducationTabView(isAr: isAr);
+  }
+
+  Widget _buildModernMedicationTab(bool isAr) {
+    return MedicationTabView(
+      isAr: isAr,
+      medications: _medications,
+      onToggleTaken: (id) {
+        unawaited(_toggleMedicationTaken(id));
+      },
+      onToggleEnabled: (id) {
+        unawaited(_toggleMedicationEnabled(id));
+      },
+      onDeleteMedication: (id) {
+        unawaited(_deleteMedication(id));
+      },
+      onEditMedication: (id) {
+        unawaited(_openMedicationEditor(medicationId: id));
+      },
+      onAddMedication: () {
+        unawaited(_openMedicationEditor());
+      },
+      todayKey: _todayKey(),
+    );
   }
 
   Widget _buildModernProfileTab(bool isAr) {
