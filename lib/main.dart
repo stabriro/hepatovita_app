@@ -3,7 +3,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -19,6 +18,8 @@ import 'features/labs/domain/entities/lab_entity.dart';
 import 'features/labs/domain/entities/lab_history_entity.dart' as domain;
 import 'features/labs/domain/usecases/evaluate_lab_goal_usecase.dart';
 import 'features/labs/domain/usecases/generate_lab_alerts_usecase.dart';
+import 'features/labs/presentation/controllers/lab_entry_flow_controller.dart';
+import 'features/labs/presentation/models/lab_entry_models.dart';
 import 'features/labs/presentation/presenters/lab_alert_presenter.dart';
 import 'features/labs/presentation/views/labs_tab_view.dart';
 import 'features/labs/presentation/viewmodels/labs_view_model.dart';
@@ -832,97 +833,6 @@ class AppSplashScreen extends StatelessWidget {
   }
 }
 
-class LabEntry {
-  final String id;
-  final String metric;
-  final double value;
-  final String unit;
-  final String refRange;
-  final String status;
-  final String date;
-  final String target;
-  final double progressVal;
-
-  LabEntry({
-    required this.id,
-    required this.metric,
-    required this.value,
-    required this.unit,
-    required this.refRange,
-    required this.status,
-    required this.date,
-    required this.target,
-    required this.progressVal,
-  });
-
-  LabEntry copyWith({
-    String? metric,
-    double? value,
-    String? unit,
-    String? refRange,
-    String? status,
-    String? date,
-    String? target,
-    double? progressVal,
-  }) {
-    return LabEntry(
-      id: id,
-      metric: metric ?? this.metric,
-      value: value ?? this.value,
-      unit: unit ?? this.unit,
-      refRange: refRange ?? this.refRange,
-      status: status ?? this.status,
-      date: date ?? this.date,
-      target: target ?? this.target,
-      progressVal: progressVal ?? this.progressVal,
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'metric': metric,
-      'value': value,
-      'unit': unit,
-      'refRange': refRange,
-      'status': status,
-      'date': date,
-      'target': target,
-      'progressVal': progressVal,
-    };
-  }
-
-  static LabEntry fromMap(Map<String, dynamic> map) {
-    return LabEntry(
-      id: map['id'] as String,
-      metric: map['metric'] as String,
-      value: (map['value'] as num).toDouble(),
-      unit: map['unit'] as String,
-      refRange: map['refRange'] as String,
-      status: map['status'] as String,
-      date: map['date'] as String,
-      target: map['target'] as String,
-      progressVal: (map['progressVal'] as num).toDouble(),
-    );
-  }
-}
-
-class LabDraft {
-  final String metric;
-  final String value;
-  final String unit;
-  final String refRange;
-  final String date;
-
-  const LabDraft({
-    required this.metric,
-    required this.value,
-    required this.unit,
-    required this.refRange,
-    required this.date,
-  });
-}
-
 class MainDashboardScreen extends StatefulWidget {
   final String lang;
   final ValueChanged<String> onLanguageChanged;
@@ -1322,42 +1232,24 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Future<void> _showAddLabEntryOptions() async {
     final l10n = AppLocalizations.of(context);
 
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.document_scanner_rounded),
-                title: Text(l10n.tr('add_lab_from_image')),
-                onTap: () => Navigator.of(sheetContext).pop('image'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.edit_note_rounded),
-                title: Text(l10n.tr('add_lab_manual')),
-                onTap: () => Navigator.of(sheetContext).pop('manual'),
-              ),
-            ],
-          ),
-        );
-      },
+    final choice = await LabEntryFlowController.chooseLabEntryMethod(
+      context,
+      l10n,
     );
 
-    if (choice == 'manual') {
+    if (choice == LabEntryMethod.manual) {
       await _upsertLabEntry();
       return;
     }
 
-    if (choice == 'image') {
+    if (choice == LabEntryMethod.image) {
       await _upsertLabEntryFromImage();
     }
   }
 
   Future<void> _upsertLabEntryFromImage() async {
     final l10n = AppLocalizations.of(context);
-    final source = await _chooseImageSource();
+    final source = await LabEntryFlowController.chooseImageSource(context, l10n);
     if (source == null) {
       return;
     }
@@ -1376,7 +1268,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       return;
     }
 
-    final draft = _parseLabDraftFromText(extractedText);
+    final draft = LabEntryFlowController.parseLabDraftFromText(extractedText);
     if (draft == null) {
       if (!mounted) {
         return;
@@ -1389,90 +1281,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
 
     await _upsertLabEntry(prefill: draft);
-  }
-
-  LabDraft? _parseLabDraftFromText(String text) {
-    final normalized = text.replaceAll(',', '.');
-    final lines = normalized
-        .split(RegExp(r'\r?\n'))
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
-
-    if (lines.isEmpty) {
-      return null;
-    }
-
-    final metricAliases = <String, List<String>>{
-      'ALT (SGPT)': ['alt', 'sgpt'],
-      'AST (SGOT)': ['ast', 'sgot'],
-      'Vitamin D (25-OH)': ['vitamin d', '25-oh', '25 oh'],
-      'Hemoglobin (Hgb)': ['hemoglobin', 'hgb'],
-      'HbA1C': ['hba1c', 'a1c'],
-    };
-
-    String metric = '';
-    String value = '';
-    String unit = '';
-    String refRange = '';
-
-    String candidateLine = lines.first;
-    for (final line in lines) {
-      final lower = line.toLowerCase();
-      for (final entry in metricAliases.entries) {
-        final hasAlias = entry.value.any(lower.contains);
-        if (hasAlias) {
-          metric = entry.key;
-          candidateLine = line;
-          break;
-        }
-      }
-      if (metric.isNotEmpty) {
-        break;
-      }
-    }
-
-    final numberRegex = RegExp(r'(-?\d+(?:\.\d+)?)');
-    final unitRegex = RegExp(r'(U/L|IU/L|mg/dL|mmol/L|ng/mL|g/dL|%)', caseSensitive: false);
-    final rangeRegex = RegExp(
-      r'((?:<|>)\s*\d+(?:\.\d+)?\s*[%A-Za-z/]+?|\d+(?:\.\d+)?\s*-\s*\d+(?:\.\d+)?\s*[%A-Za-z/]+?)',
-      caseSensitive: false,
-    );
-
-    final valueMatch = numberRegex.firstMatch(candidateLine);
-    if (valueMatch != null) {
-      value = valueMatch.group(1) ?? '';
-    }
-
-    final unitMatch = unitRegex.firstMatch(candidateLine);
-    if (unitMatch != null) {
-      unit = unitMatch.group(1)?.toUpperCase() ?? '';
-    }
-
-    final rangeMatch = rangeRegex.firstMatch(normalized);
-    if (rangeMatch != null) {
-      refRange = rangeMatch.group(1) ?? '';
-    }
-
-    if (metric.isEmpty) {
-      metric = candidateLine.split(RegExp(r'\s{2,}|:')).first.trim();
-    }
-
-    final dateMatch = RegExp(r'(\d{4}[-/]\d{1,2}[-/]\d{1,2})').firstMatch(normalized);
-    final parsedDate = dateMatch?.group(1)?.replaceAll('/', '-') ??
-        DateTime.now().toIso8601String().split('T').first;
-
-    if (metric.isEmpty || value.isEmpty) {
-      return null;
-    }
-
-    return LabDraft(
-      metric: metric,
-      value: value,
-      unit: unit,
-      refRange: refRange,
-      date: parsedDate,
-    );
   }
 
   Future<void> _upsertLabEntry({int? index, LabDraft? prefill}) async {
@@ -1723,7 +1531,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Future<void> _analyzeMealFromBarcodeImage() async {
     final l10n = AppLocalizations.of(context);
     try {
-      final source = await _chooseImageSource();
+      final source = await LabEntryFlowController.chooseImageSource(context, l10n);
       if (source == null) {
         return;
       }
@@ -1762,7 +1570,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Future<void> _analyzeMealFromTextImage() async {
     final l10n = AppLocalizations.of(context);
     try {
-      final source = await _chooseImageSource();
+      final source = await LabEntryFlowController.chooseImageSource(context, l10n);
       if (source == null) {
         return;
       }
@@ -1801,32 +1609,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         ),
       );
     }
-  }
-
-  Future<ImageSource?> _chooseImageSource() {
-    final l10n = AppLocalizations.of(context);
-    return showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.photo_camera_rounded),
-                title: Text(l10n.tr('image_source_camera')),
-                onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library_rounded),
-                title: Text(l10n.tr('image_source_gallery')),
-                onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _updateNotifications(bool enabled) async {
