@@ -6,6 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'app/di.dart';
 import 'app/services/app_persistence_coordinator.dart';
+import 'app/services/dashboard_actions_coordinator.dart';
 import 'features/dashboard/presentation/views/dashboard_shell_widgets.dart';
 import 'features/dashboard/presentation/views/overview_tab_view.dart';
 import 'features/dashboard/presentation/viewmodels/dashboard_view_model.dart';
@@ -243,6 +244,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final LabsViewModel _labsViewModel = AppDi.provideLabsViewModel();
   final AppPersistenceCoordinator _persistenceCoordinator =
       AppDi.provideAppPersistenceCoordinator();
+  late final DashboardActionsCoordinator _dashboardActionsCoordinator =
+      AppDi.provideDashboardActionsCoordinator(
+        dashboardViewModel: _dashboardViewModel,
+        mealAnalyzerViewModel: _mealAnalyzerViewModel,
+        persistenceCoordinator: _persistenceCoordinator,
+      );
   final EvaluateLabGoalUseCase _evaluateLabGoal = EvaluateLabGoalUseCase();
   final LabAlertPresenter _labAlertPresenter = const LabAlertPresenter();
   late final GenerateLabAlertsUseCase _generateLabAlertsUseCase =
@@ -251,6 +258,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _dashboardViewModel.addListener(_onScreenStateChanged);
+    _mealAnalyzerViewModel.addListener(_onScreenStateChanged);
     _labsViewModel.addListener(_onLabsViewModelChanged);
     _loadPersistedState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -260,9 +269,18 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   @override
   void dispose() {
+    _dashboardViewModel.removeListener(_onScreenStateChanged);
+    _mealAnalyzerViewModel.removeListener(_onScreenStateChanged);
     _labsViewModel.removeListener(_onLabsViewModelChanged);
     _mealSearchController.dispose();
     super.dispose();
+  }
+
+  void _onScreenStateChanged() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
   }
 
   void _onLabsViewModelChanged() {
@@ -317,17 +335,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Future<void> _loadPersistedState() async {
-    await _persistenceCoordinator.loadUiState(
-      dashboardViewModel: _dashboardViewModel,
-      mealAnalyzerViewModel: _mealAnalyzerViewModel,
-    );
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      // Coordinator mutates viewmodels; this rebuild reflects hydrated values.
-    });
+    await _dashboardActionsCoordinator.loadPersistedState();
   }
 
   Future<void> _loadLabHistory() async {
@@ -477,12 +485,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
   }
 
-  Future<void> _savePersistedState() async {
-    await _persistenceCoordinator.saveUiState(
-      dashboardViewModel: _dashboardViewModel,
-      mealAnalyzerViewModel: _mealAnalyzerViewModel,
-      labs: _labs.map((e) => e.toMap()).toList(),
-    );
+  List<Map<String, dynamic>> _labsAsMapList() {
+    return _labs.map((e) => e.toMap()).toList();
   }
 
   String _autoStatusFromRange(double value, String refRange) {
@@ -774,17 +778,17 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Future<void> _addWater(int delta) async {
-    setState(() {
-      _dashboardViewModel.addWater(delta);
-    });
-    await _savePersistedState();
+    await _dashboardActionsCoordinator.addWater(
+      delta: delta,
+      labs: _labsAsMapList(),
+    );
   }
 
   Future<void> _changeTea(int delta) async {
-    setState(() {
-      _dashboardViewModel.changeTea(delta);
-    });
-    await _savePersistedState();
+    await _dashboardActionsCoordinator.changeTea(
+      delta: delta,
+      labs: _labsAsMapList(),
+    );
   }
 
   Future<void> _setChecklistValue({
@@ -793,25 +797,21 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     bool? sun15,
     bool? lowFatDay,
   }) async {
-    setState(() {
-      _dashboardViewModel.setChecklistValue(
-        chkVitD: chkVitD,
-        walk30: walk30,
-        sun15: sun15,
-        lowFatDay: lowFatDay,
-      );
-    });
-    await _savePersistedState();
+    await _dashboardActionsCoordinator.setChecklistValue(
+      chkVitD: chkVitD,
+      walk30: walk30,
+      sun15: sun15,
+      lowFatDay: lowFatDay,
+      labs: _labsAsMapList(),
+    );
   }
 
   Future<void> _analyzeMeal(String mealName) async {
-    setState(() {
-      _mealAnalyzerViewModel.analyzeMeal(
-        mealName: mealName,
-        isAr: widget.lang == 'ar',
-      );
-    });
-    await _savePersistedState();
+    await _dashboardActionsCoordinator.analyzeMeal(
+      mealName: mealName,
+      isAr: widget.lang == 'ar',
+      labs: _labsAsMapList(),
+    );
   }
 
   @override
