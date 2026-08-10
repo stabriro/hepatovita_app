@@ -17,7 +17,14 @@ class EducationTabView extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(28),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+            border: Border.all(color: const Color(0xFFE2EDE6)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x120F2E22),
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,9 +95,9 @@ class _SuperfoodCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FBF9),
+        color: const Color(0xFFF7FBF8),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.green.shade100),
+        border: Border.all(color: const Color(0xFFD6E8DE)),
       ),
       child: Row(
         children: [

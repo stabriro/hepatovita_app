@@ -39,15 +39,32 @@ class OverviewTabView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final waterPct = (waterAmount / waterGoal).clamp(0.0, 1.0);
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 380;
+        final cardPadding = compact ? 16.0 : 20.0;
+        final sectionGap = compact ? 12.0 : 16.0;
+        final innerGap = compact ? 16.0 : 20.0;
 
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
+        return Column(
+          children: [
+            _SectionEntrance(
+              duration: const Duration(milliseconds: 380),
+              yOffset: compact ? 14 : 20,
+              child: Container(
+                padding: EdgeInsets.all(cardPadding),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(28),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+            border: Border.all(color: const Color(0xFFE2EDE6)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x120F2E22),
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,7 +120,7 @@ class OverviewTabView extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: innerGap),
               Center(
                 child: Container(
                   width: 140,
@@ -144,7 +161,7 @@ class OverviewTabView extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: innerGap),
               Row(
                 children: [
                   Expanded(
@@ -157,7 +174,7 @@ class OverviewTabView extends StatelessWidget {
                       child: const Text('+250 mL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: compact ? 6 : 8),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => onAddWater(500),
@@ -170,7 +187,7 @@ class OverviewTabView extends StatelessWidget {
                       child: const Text('+500 mL', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: compact ? 6 : 8),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => onAddWater(750),
@@ -185,7 +202,7 @@ class OverviewTabView extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: compact ? 10 : 12),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
@@ -235,14 +252,25 @@ class OverviewTabView extends StatelessWidget {
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(20),
+              ),
+            ),
+            SizedBox(height: sectionGap),
+            _SectionEntrance(
+              duration: const Duration(milliseconds: 520),
+              yOffset: compact ? 14 : 20,
+              child: Container(
+                padding: EdgeInsets.all(cardPadding),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(28),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+            border: Border.all(color: const Color(0xFFE2EDE6)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x120F2E22),
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,8 +314,42 @@ class OverviewTabView extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SectionEntrance extends StatelessWidget {
+  final Widget child;
+  final Duration duration;
+  final double yOffset;
+
+  const _SectionEntrance({
+    required this.child,
+    required this.duration,
+    this.yOffset = 18,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      child: child,
+      builder: (context, value, builtChild) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * yOffset),
+            child: builtChild,
+          ),
+        );
+      },
     );
   }
 }
@@ -344,7 +406,7 @@ class _CheckTile extends StatelessWidget {
                         Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: tagColor.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
+                          decoration: BoxDecoration(color: tagColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
                           child: Text(tag, style: TextStyle(color: tagColor, fontSize: 9, fontWeight: FontWeight.bold)),
                         ),
                       ],

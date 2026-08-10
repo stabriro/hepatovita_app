@@ -68,14 +68,29 @@ class LabsTabView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 380;
+        final cardPadding = compact ? 16.0 : 20.0;
+
+        return Column(
+          children: [
+            _SectionEntrance(
+              duration: const Duration(milliseconds: 420),
+              yOffset: compact ? 14 : 20,
+              child: Container(
+                padding: EdgeInsets.all(cardPadding),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(28),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+            border: Border.all(color: const Color(0xFFE2EDE6)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x120F2E22),
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,7 +103,7 @@ class LabsTabView extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: Wrap(
-                  spacing: 8,
+                  spacing: compact ? 6 : 8,
                   runSpacing: 8,
                   alignment: WrapAlignment.end,
                   children: [
@@ -124,18 +139,9 @@ class LabsTabView extends StatelessWidget {
               const SizedBox(height: 6),
               const SizedBox(height: 4),
               if (labs.isEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Text(
-                    isAr ? 'لا توجد فحوصات بعد. أضف أول فحص.' : 'No labs yet. Add your first lab record.',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
-                  ),
+                _RichEmptyLabsState(
+                  isAr: isAr,
+                  onAddLab: onAddLab,
                 )
               else
                 ListView.separated(
@@ -174,11 +180,15 @@ class LabsTabView extends StatelessWidget {
                                 IconButton(
                                   onPressed: () => onEditLab(index),
                                   icon: const Icon(Icons.edit_rounded, size: 18),
+                                  constraints: BoxConstraints.tightFor(width: compact ? 32 : 36, height: compact ? 32 : 36),
+                                  padding: EdgeInsets.zero,
                                   tooltip: 'Update lab',
                                 ),
                                 IconButton(
                                   onPressed: () => onDeleteLab(index),
                                   icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                  constraints: BoxConstraints.tightFor(width: compact ? 32 : 36, height: compact ? 32 : 36),
+                                  padding: EdgeInsets.zero,
                                   tooltip: 'Delete lab',
                                 ),
                               ],
@@ -227,8 +237,114 @@ class LabsTabView extends StatelessWidget {
                 ),
             ],
           ),
-        ),
-      ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _RichEmptyLabsState extends StatelessWidget {
+  final bool isAr;
+  final VoidCallback onAddLab;
+
+  const _RichEmptyLabsState({
+    required this.isAr,
+    required this.onAddLab,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD6E3EE)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2F3EA),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.science_rounded, color: Color(0xFF1B3B2B), size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isAr ? 'ابدأ سجل الفحوصات الآن' : 'Start your biomarker timeline',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            isAr
+                ? 'أضف أول نتيجة تحليل لتتبع الاتجاهات والحصول على تنبيهات علاجية تلقائية.'
+                : 'Add your first lab result to unlock trend lines and clinical alerts.',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            isAr ? '• ابدأ بتحليل ALT أو AST\n• ثم أضف القيم الجديدة مع التاريخ' : '• Start with ALT or AST\n• Add follow-up values with dates',
+            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.5),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ElevatedButton.icon(
+              onPressed: onAddLab,
+              icon: const Icon(Icons.add_rounded),
+              label: Text(isAr ? 'إضافة أول فحص' : 'Add first lab'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1B3B2B),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionEntrance extends StatelessWidget {
+  final Widget child;
+  final Duration duration;
+  final double yOffset;
+
+  const _SectionEntrance({
+    required this.child,
+    required this.duration,
+    this.yOffset = 18,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      child: child,
+      builder: (context, value, builtChild) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * yOffset),
+            child: builtChild,
+          ),
+        );
+      },
     );
   }
 }

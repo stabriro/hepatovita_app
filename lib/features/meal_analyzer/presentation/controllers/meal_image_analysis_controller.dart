@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../data/meal_image_extraction_service.dart';
@@ -31,12 +32,15 @@ class MealImageAnalysisController {
   static Future<MealImageAnalysisResult> analyzeFromBarcodeImage({
     required Future<ImageSource?> Function() chooseImageSource,
     required MealImageExtractionService extractionService,
+    VoidCallback? onImageSourceSelected,
   }) async {
     try {
       final source = await chooseImageSource();
       if (source == null) {
         return const MealImageAnalysisResult(cancelled: true);
       }
+
+      onImageSourceSelected?.call();
 
       final barcode = await extractionService.extractBarcode(source: source);
       if (barcode == null || barcode.trim().isEmpty) {
@@ -57,12 +61,15 @@ class MealImageAnalysisController {
   static Future<MealImageAnalysisResult> analyzeFromTextImage({
     required Future<ImageSource?> Function() chooseImageSource,
     required MealImageExtractionService extractionService,
+    VoidCallback? onImageSourceSelected,
   }) async {
     try {
       final source = await chooseImageSource();
       if (source == null) {
         return const MealImageAnalysisResult(cancelled: true);
       }
+
+      onImageSourceSelected?.call();
 
       final extractedText = await extractionService.extractText(source: source);
       if (extractedText == null || extractedText.trim().isEmpty) {

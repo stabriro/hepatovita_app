@@ -63,14 +63,29 @@ class MealAnalyzerTabView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 380;
+        final cardPadding = compact ? 16.0 : 20.0;
+
+        return Column(
+          children: [
+            _SectionEntrance(
+              duration: const Duration(milliseconds: 360),
+              yOffset: compact ? 14 : 20,
+              child: Container(
+                padding: EdgeInsets.all(cardPadding),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(28),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+            border: Border.all(color: const Color(0xFFE2EDE6)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x120F2E22),
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,9 +135,12 @@ class MealAnalyzerTabView extends StatelessWidget {
               ),
               if (supportsImageActions) ...[
                 const SizedBox(height: 10),
-                Row(
+                Wrap(
+                  spacing: compact ? 6 : 8,
+                  runSpacing: compact ? 6 : 8,
                   children: [
-                    Expanded(
+                    SizedBox(
+                      width: compact ? constraints.maxWidth - (cardPadding * 2) : ((constraints.maxWidth - (cardPadding * 2) - 8) / 2),
                       child: OutlinedButton.icon(
                         onPressed: isAnalyzing
                             ? null
@@ -133,8 +151,8 @@ class MealAnalyzerTabView extends StatelessWidget {
                         label: Text(l10n.tr('analyze_barcode')),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
+                    SizedBox(
+                      width: compact ? constraints.maxWidth - (cardPadding * 2) : ((constraints.maxWidth - (cardPadding * 2) - 8) / 2),
                       child: OutlinedButton.icon(
                         onPressed: isAnalyzing
                             ? null
@@ -150,15 +168,26 @@ class MealAnalyzerTabView extends StatelessWidget {
               ],
             ],
           ),
-        ),
-        if (analysis != null) ...[
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(20),
+              ),
+            ),
+            SizedBox(height: compact ? 12 : 16),
+            if (analysis != null)
+              _SectionEntrance(
+                duration: const Duration(milliseconds: 520),
+                yOffset: compact ? 14 : 20,
+                child: Container(
+                  padding: EdgeInsets.all(cardPadding),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(28),
-              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
+              border: Border.all(color: const Color(0xFFE2EDE6)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x120F2E22),
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,9 +319,133 @@ class MealAnalyzerTabView extends StatelessWidget {
                 ),
               ],
             ),
+                ),
+              )
+            else
+              _SectionEntrance(
+                duration: const Duration(milliseconds: 520),
+                yOffset: compact ? 14 : 20,
+                child: _MealAnalyzerEmptyState(
+                  isAr: Directionality.of(context) == TextDirection.rtl,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MealAnalyzerEmptyState extends StatelessWidget {
+  final bool isAr;
+
+  const _MealAnalyzerEmptyState({
+    required this.isAr,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFD6E3EE)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2F3EA),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.restaurant_menu_rounded, color: Color(0xFF1B3B2B), size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isAr ? 'نتيجة التحليل ستظهر هنا' : 'Meal analysis appears here',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            isAr
+                ? 'جرّب كتابة اسم طبق أو تحليل باركود المنتج للحصول على تقييم مناسب للكبد.'
+                : 'Search a dish name or scan a barcode to get a liver-friendly score.',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _HintChip(label: isAr ? 'سمك مشوي' : 'Grilled salmon'),
+              _HintChip(label: isAr ? 'دجاج مشوي' : 'Chicken shawarma'),
+              _HintChip(label: isAr ? 'زبادي يوناني' : 'Greek yogurt'),
+            ],
           ),
         ],
-      ],
+      ),
+    );
+  }
+}
+
+class _HintChip extends StatelessWidget {
+  final String label;
+
+  const _HintChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEEF6F1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1F5A45)),
+      ),
+    );
+  }
+}
+
+class _SectionEntrance extends StatelessWidget {
+  final Widget child;
+  final Duration duration;
+  final double yOffset;
+
+  const _SectionEntrance({
+    required this.child,
+    required this.duration,
+    this.yOffset = 18,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      child: child,
+      builder: (context, value, builtChild) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * yOffset),
+            child: builtChild,
+          ),
+        );
+      },
     );
   }
 }
@@ -328,7 +481,7 @@ class _MacroMetric extends StatelessWidget {
           child: LinearProgressIndicator(
             value: value,
             minHeight: 6,
-            backgroundColor: color.withOpacity(0.15),
+            backgroundColor: color.withValues(alpha: 0.15),
             color: color,
           ),
         ),

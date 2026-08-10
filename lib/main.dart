@@ -10,6 +10,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'app/di.dart';
 import 'app/services/app_persistence_coordinator.dart';
 import 'app/services/dashboard_actions_coordinator.dart';
+import 'app/theme/healthy_theme.dart';
 import 'features/dashboard/presentation/views/dashboard_shell_widgets.dart';
 import 'features/dashboard/presentation/views/overview_tab_view.dart';
 import 'features/dashboard/presentation/viewmodels/dashboard_view_model.dart';
@@ -53,6 +54,7 @@ class HepatoVitaApp extends StatefulWidget {
 class _HepatoVitaAppState extends State<HepatoVitaApp>
     with WidgetsBindingObserver {
   static const _kHasSeenSplash = 'has_seen_splash';
+  final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
   final AppLockService _appLockService = AppLockService.instance;
   Locale _locale = const Locale('en');
@@ -62,6 +64,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
   bool _isLocked = false;
   bool _biometricAvailable = false;
   bool _biometricAllowed = false;
+  DateTime? _skipNextResumeLockUntil;
   Timer? _splashTimer;
 
   @override
@@ -173,6 +176,11 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
   }
 
   Future<void> _recoverForgotPin() async {
+    final appContext = _rootNavigatorKey.currentContext;
+    if (appContext == null) {
+      return;
+    }
+
     final isAr = _locale.languageCode == 'ar';
     final canUseBiometrics = await _appLockService.canUseBiometrics();
     final hasRecoveryCode = await _appLockService.hasRecoveryCode();
@@ -184,7 +192,12 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
       if (hasRecoveryCode) {
         await _recoverWithRecoveryCode();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messengerContext = _rootNavigatorKey.currentContext;
+        if (messengerContext == null) {
+          return;
+        }
+
+        ScaffoldMessenger.of(messengerContext).showSnackBar(
           SnackBar(
             content: Text(
               isAr
@@ -207,7 +220,12 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
       if (hasRecoveryCode) {
         await _recoverWithRecoveryCode();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messengerContext = _rootNavigatorKey.currentContext;
+        if (messengerContext == null) {
+          return;
+        }
+
+        ScaffoldMessenger.of(messengerContext).showSnackBar(
           SnackBar(
             content: Text(
               isAr
@@ -228,12 +246,17 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
   }
 
   Future<void> _recoverWithRecoveryCode() async {
-    final l10n = AppLocalizations.of(context);
+    final appContext = _rootNavigatorKey.currentContext;
+    if (appContext == null) {
+      return;
+    }
+
+    final l10n = AppLocalizations.of(appContext);
     final codeController = TextEditingController();
     String? localError;
 
     final confirmed = await showDialog<bool>(
-      context: context,
+      context: appContext,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setInnerState) {
@@ -303,13 +326,18 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
   }
 
   Future<void> _showRecoveryCodeDialog(String code) async {
-    final l10n = AppLocalizations.of(context);
+    final appContext = _rootNavigatorKey.currentContext;
+    if (appContext == null) {
+      return;
+    }
+
+    final l10n = AppLocalizations.of(appContext);
     if (!mounted) {
       return;
     }
 
     await showDialog<void>(
-      context: context,
+      context: appContext,
       barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
@@ -366,9 +394,18 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
     await _armLock();
   }
 
+  void _skipNextResumeLock({Duration duration = const Duration(seconds: 45)}) {
+    _skipNextResumeLockUntil = DateTime.now().add(duration);
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      final skipUntil = _skipNextResumeLockUntil;
+      if (skipUntil != null && DateTime.now().isBefore(skipUntil)) {
+        _skipNextResumeLockUntil = null;
+        return;
+      }
       _armLock();
     }
   }
@@ -390,6 +427,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
   Widget build(BuildContext context) {
     final isAr = _locale.languageCode == 'ar';
     return MaterialApp(
+      navigatorKey: _rootNavigatorKey,
       locale: _locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
@@ -400,17 +438,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
       ],
       title: 'HepatoVita Companion',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: isAr ? 'Cairo' : 'Plus Jakarta Sans',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2E7D32),
-          primary: const Color(0xFF1B3B2B),
-          secondary: const Color(0xFF2E7D32),
-          surface: Colors.white,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF3F7F4),
-      ),
+      theme: HealthyTheme.theme(isAr: isAr),
       home: Directionality(
         textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
         child: AnimatedSwitcher(
@@ -446,6 +474,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
                   lang: _locale.languageCode,
                   onLanguageChanged: _toggleLanguage,
                   onLockRequested: _lockNow,
+                  onExternalIntentStarted: _skipNextResumeLock,
                 ),
         ),
       ),
@@ -838,12 +867,14 @@ class MainDashboardScreen extends StatefulWidget {
   final String lang;
   final ValueChanged<String> onLanguageChanged;
   final VoidCallback onLockRequested;
+  final VoidCallback onExternalIntentStarted;
 
   const MainDashboardScreen({
     super.key,
     required this.lang,
     required this.onLanguageChanged,
     required this.onLockRequested,
+    required this.onExternalIntentStarted,
   });
 
   @override
@@ -1255,6 +1286,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       return;
     }
 
+    widget.onExternalIntentStarted();
+
     final extractedText = await _mealImageExtractionService.extractText(
       source: source,
     );
@@ -1535,6 +1568,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       chooseImageSource: () =>
           LabEntryFlowController.chooseImageSource(context, l10n),
       extractionService: _mealImageExtractionService,
+      onImageSourceSelected: widget.onExternalIntentStarted,
     );
 
     await _handleMealImageAnalysisResult(result, l10n);
@@ -1546,6 +1580,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       chooseImageSource: () =>
           LabEntryFlowController.chooseImageSource(context, l10n),
       extractionService: _mealImageExtractionService,
+      onImageSourceSelected: widget.onExternalIntentStarted,
     );
 
     await _handleMealImageAnalysisResult(result, l10n);
@@ -1793,53 +1828,75 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     final score = _dashboardViewModel.score;
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildModernHeader(isAr),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                child: Column(
-                  children: [
-                    _buildModernHeroScoreCard(score, isAr),
-                    const SizedBox(height: 16),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: _buildActiveTabContent(isAr),
+      body: Stack(
+        children: [
+          const _HealthyBackdrop(),
+          SafeArea(
+            child: Column(
+              children: [
+                _buildModernHeader(isAr),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    child: Column(
+                      children: [
+                        _buildModernHeroScoreCard(score, isAr),
+                        const SizedBox(height: 16),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: _buildActiveTabContent(isAr),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1F1A4D3B),
+              blurRadius: 24,
+              offset: Offset(0, 8),
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentTabIndex,
-        onDestinationSelected: _goToTab,
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.home_rounded),
-            label: isAr ? 'الرئيسية' : 'Home',
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: NavigationBar(
+            selectedIndex: _currentTabIndex,
+            onDestinationSelected: _goToTab,
+            destinations: [
+              NavigationDestination(
+                icon: const Icon(Icons.home_rounded),
+                label: isAr ? 'الرئيسية' : 'Home',
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.restaurant_menu_rounded),
+                label: isAr ? 'الوجبات' : 'Meals',
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.science_rounded),
+                label: isAr ? 'التحاليل' : 'Labs',
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.menu_book_rounded),
+                label: isAr ? 'التثقيف' : 'Education',
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.person_rounded),
+                label: isAr ? 'الملف' : 'Profile',
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.restaurant_menu_rounded),
-            label: isAr ? 'الوجبات' : 'Meals',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.science_rounded),
-            label: isAr ? 'التحاليل' : 'Labs',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.menu_book_rounded),
-            label: isAr ? 'التثقيف' : 'Education',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.person_rounded),
-            label: isAr ? 'الملف' : 'Profile',
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -2009,6 +2066,63 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       onExportBackup: _exportBackupFile,
       onRestoreBackup: _restoreBackupFile,
       onLockNow: widget.onLockRequested,
+    );
+  }
+}
+
+class _HealthyBackdrop extends StatelessWidget {
+  const _HealthyBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF4F8F5), Color(0xFFEAF3EE), Color(0xFFF8FBF9)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -60,
+            right: -30,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF9ED5BF).withValues(alpha: 0.24),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 240,
+            left: -40,
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFB9E1F3).withValues(alpha: 0.22),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 120,
+            right: -26,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFDDEFD6).withValues(alpha: 0.32),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

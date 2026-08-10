@@ -123,10 +123,17 @@ class _ProfileHeader extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: const LinearGradient(
-          colors: [Color(0xFF1B3B2B), Color(0xFF2E7D32)],
+          colors: [Color(0xFF174535), Color(0xFF2A7658), Color(0xFF3A8D6D)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22113A2B),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -192,6 +199,13 @@ class _ProfileTile extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFFDDE6E0)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x120F2E22),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -259,6 +273,13 @@ class _ProfileSwitchTile extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFDDE6E0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120F2E22),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [

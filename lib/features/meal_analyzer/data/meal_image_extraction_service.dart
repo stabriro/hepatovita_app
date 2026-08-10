@@ -1,5 +1,6 @@
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 class MealImageExtractionService {
@@ -24,7 +25,13 @@ class MealImageExtractionService {
     }
 
     final inputImage = InputImage.fromFilePath(image.path);
-    final barcodes = await _barcodeScanner.processImage(inputImage);
+    final barcodes = await _safeCall<List<Barcode>>(
+      () => _barcodeScanner.processImage(inputImage),
+    );
+    if (barcodes == null) {
+      return null;
+    }
+
     for (final barcode in barcodes) {
       final value = barcode.rawValue?.trim();
       if (value != null && value.isNotEmpty) {
@@ -43,7 +50,13 @@ class MealImageExtractionService {
     }
 
     final inputImage = InputImage.fromFilePath(image.path);
-    final recognizedText = await _textRecognizer.processImage(inputImage);
+    final recognizedText = await _safeCall<RecognizedText>(
+      () => _textRecognizer.processImage(inputImage),
+    );
+    if (recognizedText == null) {
+      return null;
+    }
+
     final merged = recognizedText.text.trim();
     if (merged.isEmpty) {
       return null;
@@ -81,7 +94,15 @@ class MealImageExtractionService {
   }
 
   Future<void> dispose() async {
-    await _barcodeScanner.close();
-    await _textRecognizer.close();
+    await _safeCall<void>(() => _barcodeScanner.close());
+    await _safeCall<void>(() => _textRecognizer.close());
+  }
+
+  Future<T?> _safeCall<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on MissingPluginException {
+      return null;
+    }
   }
 }

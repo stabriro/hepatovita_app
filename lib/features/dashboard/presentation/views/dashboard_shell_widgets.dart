@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 class DashboardHeader extends StatelessWidget {
@@ -19,16 +21,16 @@ class DashboardHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1B3B2B), Color(0xFF163223)],
+          colors: [Color(0xFF174535), Color(0xFF1F5A45), Color(0xFF2F7A5D)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1B3B2B).withOpacity(0.28),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+            color: const Color(0xFF123527).withValues(alpha: 0.20),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -82,7 +84,7 @@ class DashboardHeader extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.black38,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.3)),
+              border: Border.all(color: const Color(0xFF8BCFAF).withValues(alpha: 0.38)),
             ),
             child: Row(
               children: [
@@ -135,62 +137,46 @@ class DashboardHeroScoreCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1B3B2B), Color(0xFF0F261B)],
+          colors: [Color(0xFF174535), Color(0xFF133A2D), Color(0xFF0E2D23)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1B3B2B).withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
+            color: const Color(0xFF102D22).withValues(alpha: 0.22),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            isAr ? 'الملف الصحي والسريري للمريض' : 'Clinical Patient Profile',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade900.withOpacity(0.4),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green.shade400.withOpacity(0.4)),
-                          ),
-                          child: Text(
-                            isAr ? 'مخصص' : 'Targeted',
-                            style: const TextStyle(color: Color(0xFF81C784), fontSize: 9, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isAr ? 'أهداف علاجية مخصصة بناءً على نتائج تحاليلك' : 'Therapeutic protocol built for your biomarkers',
-                      style: const TextStyle(color: Colors.white70, fontSize: 11),
-                    ),
-                  ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 320;
+
+              final titleText = Text(
+                isAr ? 'الملف الصحي والسريري للمريض' : 'Clinical Patient Profile',
+                maxLines: isCompact ? 3 : 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              );
+
+              final badge = Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade900.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade400.withValues(alpha: 0.4)),
                 ),
-              ),
-              Stack(
+                child: Text(
+                  isAr ? 'مخصص' : 'Targeted',
+                  style: const TextStyle(color: Color(0xFF81C784), fontSize: 9, fontWeight: FontWeight.bold),
+                ),
+              );
+
+              final scoreIndicator = Stack(
                 alignment: Alignment.center,
                 children: [
                   SizedBox(
@@ -210,14 +196,56 @@ class DashboardHeroScoreCard extends StatelessWidget {
                     style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900),
                   ),
                 ],
-              ),
-            ],
+              );
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isCompact)
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              ConstrainedBox(
+                                constraints: BoxConstraints(maxWidth: math.max(0, constraints.maxWidth - 24)),
+                                child: titleText,
+                              ),
+                              badge,
+                            ],
+                          )
+                        else
+                          Row(
+                            children: [
+                              Expanded(child: titleText),
+                              const SizedBox(width: 6),
+                              badge,
+                            ],
+                          ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isAr ? 'أهداف علاجية مخصصة بناءً على نتائج تحاليلك' : 'Therapeutic protocol built for your biomarkers',
+                          style: const TextStyle(color: Colors.white70, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  scoreIndicator,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white10),
             ),
@@ -356,9 +384,9 @@ class _PillarTag extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withOpacity(0.4)),
+            border: Border.all(color: color.withValues(alpha: 0.4)),
           ),
           child: Text(value, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
         ),
