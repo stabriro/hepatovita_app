@@ -62,7 +62,6 @@ class ItmainApp extends StatefulWidget {
 
 class _ItmainAppState extends State<ItmainApp>
     with WidgetsBindingObserver {
-  static const _kHasSeenSplash = 'has_seen_splash';
   static const _kSelectedLanguageCode = 'selected_language_code';
   static const _kHasSelectedLanguage = 'has_selected_language';
   final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -90,7 +89,6 @@ class _ItmainAppState extends State<ItmainApp>
 
   Future<void> _initializeLaunchFlow() async {
     final prefs = await SharedPreferences.getInstance();
-    final hasSeenSplash = prefs.getBool(_kHasSeenSplash) ?? false;
     final savedLangCode = prefs.getString(_kSelectedLanguageCode);
     final hasSelectedLanguage =
         (prefs.getBool(_kHasSelectedLanguage) ?? false) || savedLangCode != null;
@@ -106,36 +104,10 @@ class _ItmainAppState extends State<ItmainApp>
       _locale = Locale(savedLangCode);
     }
 
-    if (!hasSelectedLanguage) {
-      setState(() {
-        _isBootstrapping = false;
-        _showSplash = false;
-        _needsLanguageSetup = true;
-        _needsPinSetup = !hasPin;
-        _isLocked = hasPin;
-        _biometricAvailable = canUseBiometrics;
-        _biometricAllowed = biometricEnabled && canUseBiometrics;
-      });
-      return;
-    }
-
-    if (hasSeenSplash) {
-      setState(() {
-        _isBootstrapping = false;
-        _showSplash = false;
-        _needsLanguageSetup = false;
-        _needsPinSetup = !hasPin;
-        _isLocked = hasPin;
-        _biometricAvailable = canUseBiometrics;
-        _biometricAllowed = biometricEnabled && canUseBiometrics;
-      });
-      return;
-    }
-
     setState(() {
       _isBootstrapping = false;
       _showSplash = true;
-      _needsLanguageSetup = false;
+      _needsLanguageSetup = !hasSelectedLanguage;
       _needsPinSetup = !hasPin;
       _isLocked = hasPin;
       _biometricAvailable = canUseBiometrics;
@@ -143,7 +115,7 @@ class _ItmainAppState extends State<ItmainApp>
     });
 
     _splashTimer?.cancel();
-    _splashTimer = Timer(const Duration(seconds: 2), _handleSplashContinue);
+    _splashTimer = Timer(const Duration(milliseconds: 2600), _handleSplashContinue);
   }
 
   Future<void> _handleSplashContinue() async {
@@ -151,8 +123,9 @@ class _ItmainAppState extends State<ItmainApp>
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kHasSeenSplash, true);
+    // Allow one extra beat so slow devices complete first frame composition
+    // before we transition into unlock/setup surfaces.
+    await Future<void>.delayed(const Duration(milliseconds: 220));
 
     if (!mounted) {
       return;
@@ -175,11 +148,7 @@ class _ItmainAppState extends State<ItmainApp>
     setState(() {
       _locale = Locale(languageCode);
       _needsLanguageSetup = false;
-      _showSplash = true;
     });
-
-    _splashTimer?.cancel();
-    _splashTimer = Timer(const Duration(seconds: 2), _handleSplashContinue);
   }
 
   Future<void> _completePinSetup({
@@ -519,16 +488,35 @@ class _ItmainAppState extends State<ItmainApp>
       home: Directionality(
         textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 450),
+          duration: const Duration(milliseconds: 620),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) {
+            final fade = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            );
+            final scale = Tween<double>(begin: 0.985, end: 1).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+            );
+            return FadeTransition(
+              opacity: fade,
+              child: ScaleTransition(scale: scale, child: child),
+            );
+          },
           child: _isBootstrapping
-              ? const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
+              ? AppSplashScreen(
+                  key: const ValueKey('splash_bootstrap'),
+                  isAr: isAr,
+                  onContinue: () {},
+                  isLoadingPhase: true,
                 )
               : _showSplash
               ? AppSplashScreen(
                   key: const ValueKey('splash'),
                   isAr: isAr,
                   onContinue: _handleSplashContinue,
+                  isLoadingPhase: false,
                 )
               : _needsLanguageSetup
               ? LanguageSetupScreen(
@@ -972,11 +960,13 @@ class LanguageSetupScreen extends StatelessWidget {
 class AppSplashScreen extends StatelessWidget {
   final bool isAr;
   final VoidCallback onContinue;
+  final bool isLoadingPhase;
 
   const AppSplashScreen({
     super.key,
     required this.isAr,
     required this.onContinue,
+    this.isLoadingPhase = false,
   });
 
   @override
@@ -987,99 +977,171 @@ class AppSplashScreen extends StatelessWidget {
         width: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF0F2A20), Color(0xFF1B3B2B), Color(0xFF2E7D32)],
+            colors: [Color(0xFF0B231B), Color(0xFF144132), Color(0xFF2F7A5D)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Spacer(),
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.92, end: 1),
-                  duration: const Duration(milliseconds: 900),
-                  curve: Curves.easeOutBack,
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: value,
-                      child: child,
-                    );
-                  },
-                  child: Container(
-                    width: 118,
-                    height: 118,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0x66FFFFFF), Color(0x22FFFFFF)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.white30),
-                    ),
-                    child: const Icon(
-                      Icons.favorite_rounded,
-                      size: 58,
-                      color: Colors.white,
-                    ),
-                  ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: -90,
+                right: isAr ? null : -70,
+                left: isAr ? -70 : null,
+                child: const _SplashGlow(
+                  size: 220,
+                  color: Color(0x3357D788),
                 ),
-                const SizedBox(height: 22),
-                Text(
-                  'اطمئن',
-                  textAlign: TextAlign.start,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontFamily: isAr ? 'Cairo' : 'Outfit',
-                    fontSize: 34,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
-                  ),
+              ),
+              Positioned(
+                bottom: -120,
+                left: isAr ? null : -90,
+                right: isAr ? -90 : null,
+                child: const _SplashGlow(
+                  size: 260,
+                  color: Color(0x2245C8F8),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.tr('splash_subtitle'),
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 15,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _SplashTag(label: l10n.tr('splash_tag_dynamic_labs')),
-                    _SplashTag(label: l10n.tr('splash_tag_daily_tracking')),
-                    _SplashTag(label: l10n.tr('splash_tag_encrypted_backup')),
+                    const Spacer(),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.92, end: 1),
+                      duration: const Duration(milliseconds: 900),
+                      curve: Curves.easeOutBack,
+                      builder: (context, value, child) {
+                        return Transform.scale(scale: value, child: child);
+                      },
+                      child: Container(
+                        width: 124,
+                        height: 124,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0x66FFFFFF), Color(0x22FFFFFF)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(34),
+                          border: Border.all(color: Colors.white30),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x331BD99B),
+                              blurRadius: 26,
+                              offset: Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.favorite_rounded,
+                          size: 58,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      l10n.tr('app_title'),
+                      textAlign: TextAlign.start,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontFamily: isAr ? 'Cairo' : 'Outfit',
+                        fontSize: 36,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.tr('splash_subtitle'),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 15,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _SplashTag(label: l10n.tr('splash_tag_dynamic_labs')),
+                        _SplashTag(label: l10n.tr('splash_tag_daily_tracking')),
+                        _SplashTag(label: l10n.tr('splash_tag_encrypted_backup')),
+                      ],
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              isLoadingPhase
+                                  ? l10n.tr('splash_loading_boot')
+                                  : l10n.tr('splash_loading_security_check'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: isLoadingPhase ? null : onContinue,
+                      child: Text(
+                        l10n.tr('splash_skip'),
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ),
                   ],
                 ),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: onContinue,
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  label: Text(l10n.tr('splash_get_started')),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF1B3B2B),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SplashGlow extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const _SplashGlow({required this.size, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color, Colors.transparent],
+          stops: const [0.25, 1],
         ),
       ),
     );
