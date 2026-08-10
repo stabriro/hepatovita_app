@@ -1,20 +1,31 @@
 import 'package:flutter/foundation.dart';
 
 import '../../data/open_food_facts_service.dart';
+import '../../../../services/ai/grok_health_coach_service.dart';
 
 class MealAnalyzerViewModel extends ChangeNotifier {
-  MealAnalyzerViewModel({OpenFoodFactsService? nutritionService})
-      : _nutritionService = nutritionService ?? OpenFoodFactsService();
+  MealAnalyzerViewModel({
+    OpenFoodFactsService? nutritionService,
+    GrokHealthCoachService? coachService,
+  })
+      : _nutritionService = nutritionService ?? OpenFoodFactsService(),
+        _coachService = coachService ?? const GrokHealthCoachService();
 
   Map<String, dynamic>? _analyzedResult;
   bool _isAnalyzing = false;
+  bool _isGeneratingCoachSummary = false;
+  String? _coachSummary;
   final OpenFoodFactsService _nutritionService;
+  final GrokHealthCoachService _coachService;
 
   Map<String, dynamic>? get analyzedResult => _analyzedResult;
   bool get isAnalyzing => _isAnalyzing;
+  bool get isGeneratingCoachSummary => _isGeneratingCoachSummary;
+  String? get coachSummary => _coachSummary;
 
   void hydrateFromSnapshot(Map<String, dynamic>? analyzedResult) {
     _analyzedResult = analyzedResult;
+    _coachSummary = null;
     notifyListeners();
   }
 
@@ -27,6 +38,7 @@ class MealAnalyzerViewModel extends ChangeNotifier {
     }
 
     _isAnalyzing = true;
+    _coachSummary = null;
     notifyListeners();
 
     try {
@@ -37,14 +49,43 @@ class MealAnalyzerViewModel extends ChangeNotifier {
           : await _nutritionService.searchMeal(mealName);
       if (nutrients != null) {
         _analyzedResult = _buildFromApi(mealName: mealName, nutrients: nutrients, isAr: isAr);
+        await _generateCoachSummary(mealName: mealName, isAr: isAr);
         return;
       }
 
       _analyzedResult = _buildKeywordFallback(mealName: mealName, isAr: isAr);
+      await _generateCoachSummary(mealName: mealName, isAr: isAr);
     } catch (_) {
       _analyzedResult = _buildKeywordFallback(mealName: mealName, isAr: isAr);
+      await _generateCoachSummary(mealName: mealName, isAr: isAr);
     } finally {
       _isAnalyzing = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _generateCoachSummary({
+    required String mealName,
+    required bool isAr,
+  }) async {
+    final analysis = _analyzedResult;
+    if (analysis == null) {
+      return;
+    }
+
+    _isGeneratingCoachSummary = true;
+    notifyListeners();
+
+    try {
+      _coachSummary = await _coachService.generateMealCoachSummary(
+        mealName: mealName,
+        analysis: analysis,
+        isAr: isAr,
+      );
+    } catch (_) {
+      _coachSummary = null;
+    } finally {
+      _isGeneratingCoachSummary = false;
       notifyListeners();
     }
   }

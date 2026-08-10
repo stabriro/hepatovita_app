@@ -5,6 +5,9 @@ import '../../../../l10n/app_localizations.dart';
 class OverviewTabView extends StatelessWidget {
   final bool isAr;
   final bool hasLabs;
+  final String? coachSummary;
+  final bool isGeneratingCoachSummary;
+  final VoidCallback onOpenMealAnalyzer;
   final int waterAmount;
   final int waterGoal;
   final int greenTeaCount;
@@ -24,6 +27,9 @@ class OverviewTabView extends StatelessWidget {
     super.key,
     required this.isAr,
     required this.hasLabs,
+    required this.coachSummary,
+    required this.isGeneratingCoachSummary,
+    required this.onOpenMealAnalyzer,
     required this.waterAmount,
     required this.waterGoal,
     required this.greenTeaCount,
@@ -51,6 +57,7 @@ class OverviewTabView extends StatelessWidget {
         final cardPadding = compact ? 16.0 : 20.0;
         final sectionGap = compact ? 12.0 : 16.0;
         final innerGap = compact ? 16.0 : 20.0;
+        final hasCoachSummary = coachSummary != null && coachSummary!.trim().isNotEmpty;
 
         return Column(
           children: [
@@ -257,6 +264,111 @@ class OverviewTabView extends StatelessWidget {
               ),
             ],
           ),
+              ),
+            ),
+            SizedBox(height: sectionGap),
+            _SectionEntrance(
+              duration: const Duration(milliseconds: 460),
+              yOffset: compact ? 14 : 20,
+              child: Container(
+                padding: EdgeInsets.all(cardPadding),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: const Color(0xFFE2EDE6)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x120F2E22),
+                      blurRadius: 20,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(Icons.psychology_alt_rounded, color: Colors.green.shade700, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l10n.tr('coach_card_title'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
+                              ),
+                              Text(
+                                l10n.tr('coach_card_subtitle'),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, height: 1.2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAF8),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFD7E7DB)),
+                      ),
+                      child: isGeneratingCoachSummary
+                          ? Row(
+                              children: [
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2.2),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    l10n.tr('coach_card_loading'),
+                                    style: const TextStyle(fontSize: 12, color: Color(0xFF1B3B2B)),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Text(
+                              hasCoachSummary
+                                  ? coachSummary!
+                                  : l10n.tr('coach_card_empty'),
+                              style: const TextStyle(fontSize: 12, height: 1.45, color: Color(0xFF1B3B2B)),
+                            ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: onOpenMealAnalyzer,
+                        icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
+                        label: Text(l10n.tr('coach_card_action')),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF2E7D32)),
+                          foregroundColor: const Color(0xFF2E7D32),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             SizedBox(height: sectionGap),

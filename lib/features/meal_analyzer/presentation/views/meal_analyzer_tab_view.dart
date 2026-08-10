@@ -48,6 +48,8 @@ class MealAnalyzerTabView extends StatelessWidget {
   final bool supportsImageActions;
   final MealAnalysisUiModel? analysis;
   final bool isAnalyzing;
+  final String? coachSummary;
+  final bool isGeneratingCoachSummary;
 
   const MealAnalyzerTabView({
     super.key,
@@ -58,6 +60,8 @@ class MealAnalyzerTabView extends StatelessWidget {
     this.supportsImageActions = false,
     required this.analysis,
     required this.isAnalyzing,
+    this.coachSummary,
+    this.isGeneratingCoachSummary = false,
   });
 
   @override
@@ -339,6 +343,34 @@ class MealAnalyzerTabView extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (coachSummary != null || isGeneratingCoachSummary) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF4F7F4),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFD7E7DB)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.psychology_alt_rounded, size: 18, color: Color(0xFF2E7D32)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            isGeneratingCoachSummary
+                                ? (Directionality.of(context) == TextDirection.rtl
+                                    ? 'جاري إعداد ملخص مساعد...' 
+                                    : 'Preparing coach summary...')
+                                : coachSummary!,
+                            style: const TextStyle(fontSize: 12, height: 1.4, color: Color(0xFF1B3B2B)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
                 ),

@@ -3403,6 +3403,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     return OverviewTabView(
       isAr: isAr,
       hasLabs: _labs.isNotEmpty,
+      coachSummary: _mealAnalyzerViewModel.coachSummary,
+      isGeneratingCoachSummary: _mealAnalyzerViewModel.isGeneratingCoachSummary,
+      onOpenMealAnalyzer: () => _goToTab(1),
       waterAmount: _dashboardViewModel.waterAmount,
       waterGoal: _dashboardViewModel.waterGoal,
       greenTeaCount: _dashboardViewModel.greenTeaCount,
@@ -3429,6 +3432,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       supportsImageActions: Platform.isAndroid || Platform.isIOS,
       analysis: _toMealAnalysisUiModel(),
       isAnalyzing: _mealAnalyzerViewModel.isAnalyzing,
+      coachSummary: _mealAnalyzerViewModel.coachSummary,
+      isGeneratingCoachSummary: _mealAnalyzerViewModel.isGeneratingCoachSummary,
     );
   }
 
