@@ -10,6 +10,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'app/di.dart';
 import 'app/services/app_persistence_coordinator.dart';
 import 'app/services/dashboard_actions_coordinator.dart';
+import 'app/services/pdf_report_service.dart';
 import 'app/theme/healthy_theme.dart';
 import 'features/dashboard/presentation/views/dashboard_shell_widgets.dart';
 import 'features/dashboard/presentation/views/overview_tab_view.dart';
@@ -1119,10 +1120,16 @@ class MainDashboardScreen extends StatefulWidget {
 }
 
 class _MainDashboardScreenState extends State<MainDashboardScreen> {
+  static const _kReminderHydration = 'hydration';
+  static const _kReminderChecklist = 'checklist';
+  static const _kReminderLowScore = 'low_score';
+  static const _kReminderLabsFollowUp = 'labs_follow_up';
+
   int _currentTabIndex = 0;
   bool _notificationsEnabled = true;
   bool _biometricEnabled = false;
   bool _canUseBiometric = false;
+  bool _isEvaluatingSmartReminders = false;
 
   List<LabEntry> _labs = <LabEntry>[];
 
@@ -1136,6 +1143,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final LabsViewModel _labsViewModel = AppDi.provideLabsViewModel();
   final AppPersistenceCoordinator _persistenceCoordinator =
       AppDi.provideAppPersistenceCoordinator();
+  final PdfReportService _pdfReportService = PdfReportService();
   final AppLockService _appLockService = AppLockService.instance;
   final AppSettingsService _appSettingsService = AppSettingsService.instance;
   late final DashboardActionsCoordinator _dashboardActionsCoordinator =
@@ -1177,6 +1185,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _biometricEnabled = biometricEnabled;
       _canUseBiometric = canUseBiometric;
     });
+
+    _requestSmartReminderEvaluation();
   }
 
   @override
@@ -1194,6 +1204,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       return;
     }
     setState(() {});
+    _requestSmartReminderEvaluation();
   }
 
   void _onLabsViewModelChanged() {
@@ -1216,7 +1227,155 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         return;
       }
       _maybeShowCriticalAlertPopup();
+      _requestSmartReminderEvaluation();
     });
+  }
+
+  void _requestSmartReminderEvaluation() {
+    unawaited(_evaluateSmartReminders());
+  }
+
+  Future<void> _evaluateSmartReminders() async {
+    if (_isEvaluatingSmartReminders || !_notificationsEnabled || !mounted) {
+      return;
+    }
+
+    _isEvaluatingSmartReminders = true;
+    final l10n = AppLocalizations.of(context);
+    final now = DateTime.now();
+    final dayStamp = _dayStamp(now);
+
+    try {
+      if (now.hour >= 11 &&
+          _dashboardViewModel.waterAmount <
+              (_dashboardViewModel.waterGoal * 0.45).round()) {
+        await _maybeSendSmartReminder(
+          key: _kReminderHydration,
+          stamp: dayStamp,
+          id: 401,
+          title: l10n.tr('smart_reminder_title'),
+          body: l10n.tr('smart_reminder_hydration'),
+        );
+      }
+
+      if (now.hour >= 18 && _checklistDoneCount() <= 2) {
+        await _maybeSendSmartReminder(
+          key: _kReminderChecklist,
+          stamp: dayStamp,
+          id: 402,
+          title: l10n.tr('smart_reminder_title'),
+          body: l10n.tr('smart_reminder_checklist'),
+        );
+      }
+
+      if (now.hour >= 20 && _dashboardViewModel.score < 60) {
+        await _maybeSendSmartReminder(
+          key: _kReminderLowScore,
+          stamp: dayStamp,
+          id: 403,
+          title: l10n.tr('smart_reminder_title'),
+          body: l10n.tr('smart_reminder_low_score'),
+        );
+      }
+
+      final latestLabDate = _latestLabRecordDate();
+      if (latestLabDate != null && now.difference(latestLabDate).inDays >= 14) {
+        await _maybeSendSmartReminder(
+          key: _kReminderLabsFollowUp,
+          stamp: _weekStamp(now),
+          id: 404,
+          title: l10n.tr('smart_reminder_title'),
+          body: l10n.tr('smart_reminder_labs_follow_up'),
+        );
+      }
+    } finally {
+      _isEvaluatingSmartReminders = false;
+    }
+  }
+
+  Future<void> _maybeSendSmartReminder({
+    required String key,
+    required String stamp,
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    final lastStamp = await _appSettingsService.getSmartReminderStamp(key);
+    if (lastStamp == stamp) {
+      return;
+    }
+
+    await LocalNotificationService.instance.showSmartReminder(
+      id: id,
+      title: title,
+      body: body,
+    );
+    await _appSettingsService.setSmartReminderStamp(key, stamp);
+  }
+
+  int _checklistDoneCount() {
+    int done = 0;
+    if (_dashboardViewModel.chkVitD) done++;
+    if (_dashboardViewModel.walk30) done++;
+    if (_dashboardViewModel.sun15) done++;
+    if (_dashboardViewModel.lowFatDay) done++;
+    return done;
+  }
+
+  DateTime? _latestLabRecordDate() {
+    DateTime? latest;
+    for (final entries in _labHistoryByMetric.values) {
+      for (final entry in entries) {
+        final candidate = _parseLabDate(entry.date, fallbackIso: entry.createdAt);
+        if (candidate == null) {
+          continue;
+        }
+        if (latest == null || candidate.isAfter(latest)) {
+          latest = candidate;
+        }
+      }
+    }
+    return latest;
+  }
+
+  String _dayStamp(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
+
+  String _weekStamp(DateTime date) {
+    final firstDayOfYear = DateTime(date.year, 1, 1);
+    final week = ((date.difference(firstDayOfYear).inDays) / 7).floor() + 1;
+    return '${date.year}-W${week.toString().padLeft(2, '0')}';
+  }
+
+  DateTime? _parseLabDate(String raw, {String? fallbackIso}) {
+    final normalized = raw.trim();
+    if (normalized.isNotEmpty) {
+      final direct = DateTime.tryParse(normalized);
+      if (direct != null) {
+        return direct;
+      }
+
+      final slashParts = normalized.split('/');
+      if (slashParts.length == 3) {
+        final a = int.tryParse(slashParts[0]);
+        final b = int.tryParse(slashParts[1]);
+        final c = int.tryParse(slashParts[2]);
+        if (a != null && b != null && c != null) {
+          if (a > 31) {
+            return DateTime(a, b, c);
+          }
+          return DateTime(c, b, a);
+        }
+      }
+    }
+
+    if (fallbackIso != null && fallbackIso.trim().isNotEmpty) {
+      return DateTime.tryParse(fallbackIso);
+    }
+    return null;
   }
 
   LabEntity _toLabEntity(LabEntry entry) {
@@ -1410,6 +1569,56 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.tr('restore_failed', args: {'error': '$e'}))),
+      );
+    }
+  }
+
+  Future<void> _exportMedicalPdfReport() async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      final reportPath = await _pdfReportService.generateMedicalReport(
+        isAr: widget.lang == 'ar',
+        score: _dashboardViewModel.score,
+        waterAmount: _dashboardViewModel.waterAmount,
+        waterGoal: _dashboardViewModel.waterGoal,
+        greenTeaCount: _dashboardViewModel.greenTeaCount,
+        teaGoal: _dashboardViewModel.teaGoal,
+        chkVitD: _dashboardViewModel.chkVitD,
+        walk30: _dashboardViewModel.walk30,
+        sun15: _dashboardViewModel.sun15,
+        lowFatDay: _dashboardViewModel.lowFatDay,
+        labs: List<LabEntry>.from(_labs),
+      );
+
+      if (!mounted || reportPath == null) {
+        return;
+      }
+
+      if (Platform.isAndroid || Platform.isIOS) {
+        await Share.shareXFiles(
+          [XFile(reportPath)],
+          subject: l10n.tr('pdf_report_subject'),
+          text: l10n.tr('pdf_report_share_text'),
+        );
+
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.tr('pdf_report_ready_to_share'))),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.tr('pdf_report_saved_to', args: {'path': reportPath}))),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.tr('pdf_report_failed', args: {'error': '$e'}))),
       );
     }
   }
@@ -1881,6 +2090,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     setState(() {
       _notificationsEnabled = enabled;
     });
+    if (enabled) {
+      _requestSmartReminderEvaluation();
+    }
   }
 
   Future<void> _updateBiometric(bool enabled) async {
@@ -2262,11 +2474,48 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               value: e.value,
               unit: e.unit,
               date: e.date,
+              status: e.status,
+              createdAt: e.createdAt,
             ),
           )
           .toList();
     });
     return uiHistoryByMetric;
+  }
+
+  List<LabsTimelineEvent> _toLabsTimelineEvents() {
+    final events = <LabsTimelineEvent>[];
+    _labHistoryByMetric.forEach((metric, entries) {
+      for (final entry in entries) {
+        events.add(
+          LabsTimelineEvent(
+            metric: metric,
+            value: entry.value,
+            unit: entry.unit,
+            status: entry.status,
+            date: entry.date,
+          ),
+        );
+      }
+    });
+
+    events.sort((a, b) {
+      final aDate = _parseLabDate(a.date);
+      final bDate = _parseLabDate(b.date);
+
+      if (aDate == null && bDate == null) {
+        return 0;
+      }
+      if (aDate == null) {
+        return 1;
+      }
+      if (bDate == null) {
+        return -1;
+      }
+      return bDate.compareTo(aDate);
+    });
+
+    return events;
   }
 
   Widget _buildModernLabsTab(bool isAr) {
@@ -2275,6 +2524,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       isAr: isAr,
       labs: _toLabsTabLabItems(),
       historyByMetric: _toLabsTabHistoryByMetric(),
+      timelineEvents: _toLabsTimelineEvents(),
       alerts: _generateLabAlerts(l10n),
       onExportBackup: _exportBackupFile,
       onRestoreBackup: _restoreBackupFile,
@@ -2300,6 +2550,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       onNotificationsChanged: _updateNotifications,
       onBiometricChanged: _updateBiometric,
       onChangePin: _showChangePinDialog,
+      onExportPdfReport: _exportMedicalPdfReport,
       onExportBackup: _exportBackupFile,
       onRestoreBackup: _restoreBackupFile,
       onLockNow: widget.onLockRequested,

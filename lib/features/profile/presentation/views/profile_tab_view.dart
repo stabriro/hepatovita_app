@@ -10,6 +10,7 @@ class ProfileTabView extends StatelessWidget {
   final ValueChanged<bool> onNotificationsChanged;
   final ValueChanged<bool> onBiometricChanged;
   final VoidCallback onChangePin;
+  final VoidCallback onExportPdfReport;
   final VoidCallback onExportBackup;
   final VoidCallback onRestoreBackup;
   final VoidCallback onLockNow;
@@ -25,6 +26,7 @@ class ProfileTabView extends StatelessWidget {
     required this.onNotificationsChanged,
     required this.onBiometricChanged,
     required this.onChangePin,
+    required this.onExportPdfReport,
     required this.onExportBackup,
     required this.onRestoreBackup,
     required this.onLockNow,
@@ -87,6 +89,16 @@ class ProfileTabView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
+        _ProfileTile(
+          icon: Icons.picture_as_pdf_rounded,
+          title: isAr ? 'تصدير تقرير PDF طبي' : 'Export Medical PDF Report',
+          subtitle: isAr
+              ? 'إنشاء تقرير مختصر لمشاركته مع الطبيب'
+              : 'Generate a summary report you can share with your doctor',
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: onExportPdfReport,
+        ),
+        const SizedBox(height: 10),
         _ProfileTile(
           icon: Icons.upload_file_rounded,
           title: isAr ? 'تصدير نسخة احتياطية مشفرة' : 'Export Encrypted Backup',

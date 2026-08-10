@@ -63,4 +63,29 @@ class LocalNotificationService {
 
     await _plugin.show(id, title, body, details);
   }
+
+  Future<void> showSmartReminder({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    const android = AndroidNotificationDetails(
+      'smart_health_reminders',
+      'Smart Health Reminders',
+      channelDescription: 'Adaptive reminders based on daily adherence',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const darwin = DarwinNotificationDetails();
+    const linux = LinuxNotificationDetails();
+
+    const details = NotificationDetails(
+      android: android,
+      iOS: darwin,
+      macOS: darwin,
+      linux: linux,
+    );
+
+    await _plugin.show(id, title, body, details);
+  }
 }

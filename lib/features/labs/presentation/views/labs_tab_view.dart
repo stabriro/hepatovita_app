@@ -31,10 +31,30 @@ class LabsTabHistoryItem {
   final double value;
   final String unit;
   final String date;
+  final String status;
+  final String createdAt;
 
   const LabsTabHistoryItem({
     required this.value,
     required this.unit,
+    required this.date,
+    required this.status,
+    required this.createdAt,
+  });
+}
+
+class LabsTimelineEvent {
+  final String metric;
+  final double value;
+  final String unit;
+  final String status;
+  final String date;
+
+  const LabsTimelineEvent({
+    required this.metric,
+    required this.value,
+    required this.unit,
+    required this.status,
     required this.date,
   });
 }
@@ -43,6 +63,7 @@ class LabsTabView extends StatelessWidget {
   final bool isAr;
   final List<LabsTabLabItem> labs;
   final Map<String, List<LabsTabHistoryItem>> historyByMetric;
+  final List<LabsTimelineEvent> timelineEvents;
   final List<LabAlertUiModel> alerts;
   final VoidCallback onExportBackup;
   final VoidCallback onRestoreBackup;
@@ -56,6 +77,7 @@ class LabsTabView extends StatelessWidget {
     required this.isAr,
     required this.labs,
     required this.historyByMetric,
+    required this.timelineEvents,
     required this.alerts,
     required this.onExportBackup,
     required this.onRestoreBackup,
@@ -136,6 +158,10 @@ class LabsTabView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               _AlertsPanel(alerts: alerts),
+              const SizedBox(height: 8),
+              _LabsTimelinePanel(
+                events: timelineEvents,
+              ),
               const SizedBox(height: 6),
               const SizedBox(height: 4),
               if (labs.isEmpty)
@@ -243,6 +269,167 @@ class LabsTabView extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class _LabsTimelinePanel extends StatelessWidget {
+  final List<LabsTimelineEvent> events;
+
+  const _LabsTimelinePanel({
+    required this.events,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final shown = events.take(10).toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD6E3EE)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2F3EA),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.timeline_rounded,
+                  color: Color(0xFF1B3B2B),
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  l10n.tr('labs_timeline_title'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.tr('labs_timeline_hint'),
+            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 10),
+          if (shown.isEmpty)
+            Text(
+              l10n.tr('labs_timeline_empty'),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: shown.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final event = shown[index];
+                final statusColor = _statusColor(event.status);
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 86,
+                      child: Text(
+                        event.date,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFF475569),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Column(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        if (index != shown.length - 1)
+                          Container(
+                            width: 2,
+                            height: 34,
+                            color: const Color(0xFFCBD5E1),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                event.metric,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${event.value} ${event.unit}'.trim(),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF334155),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Color _statusColor(String status) {
+    final normalized = status.toLowerCase();
+    if (normalized.contains('normal') || normalized.contains('ضمن')) {
+      return const Color(0xFF16A34A);
+    }
+    if (normalized.contains('high') || normalized.contains('low')) {
+      return const Color(0xFFF59E0B);
+    }
+    return const Color(0xFFDC2626);
   }
 }
 
