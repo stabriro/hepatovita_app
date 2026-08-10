@@ -24,6 +24,7 @@ import 'features/labs/presentation/presenters/lab_alert_presenter.dart';
 import 'features/labs/presentation/views/labs_tab_view.dart';
 import 'features/labs/presentation/viewmodels/labs_view_model.dart';
 import 'features/meal_analyzer/presentation/views/meal_analyzer_tab_view.dart';
+import 'features/meal_analyzer/presentation/controllers/meal_image_analysis_controller.dart';
 import 'features/meal_analyzer/presentation/viewmodels/meal_analyzer_view_model.dart';
 import 'features/meal_analyzer/data/meal_image_extraction_service.dart';
 import 'features/profile/presentation/views/profile_tab_view.dart';
@@ -1530,83 +1531,72 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Future<void> _analyzeMealFromBarcodeImage() async {
     final l10n = AppLocalizations.of(context);
-    try {
-      final source = await LabEntryFlowController.chooseImageSource(context, l10n);
-      if (source == null) {
-        return;
-      }
+    final result = await MealImageAnalysisController.analyzeFromBarcodeImage(
+      chooseImageSource: () =>
+          LabEntryFlowController.chooseImageSource(context, l10n),
+      extractionService: _mealImageExtractionService,
+    );
 
-      final barcode = await _mealImageExtractionService.extractBarcode(
-        source: source,
-      );
-      if (barcode == null || barcode.trim().isEmpty) {
-        if (!mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.tr('barcode_not_found_in_image')),
-          ),
-        );
-        return;
-      }
-
-      _mealSearchController.text = barcode;
-      await _analyzeMeal(barcode);
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            l10n.tr('barcode_image_analysis_failed', args: {'error': '$e'}),
-          ),
-        ),
-      );
-    }
+    await _handleMealImageAnalysisResult(result, l10n);
   }
 
   Future<void> _analyzeMealFromTextImage() async {
     final l10n = AppLocalizations.of(context);
-    try {
-      final source = await LabEntryFlowController.chooseImageSource(context, l10n);
-      if (source == null) {
-        return;
-      }
+    final result = await MealImageAnalysisController.analyzeFromTextImage(
+      chooseImageSource: () =>
+          LabEntryFlowController.chooseImageSource(context, l10n),
+      extractionService: _mealImageExtractionService,
+    );
 
-      final extractedText = await _mealImageExtractionService.extractText(
-        source: source,
-      );
-      if (extractedText == null || extractedText.trim().isEmpty) {
-        if (!mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.tr('text_not_found_in_image')),
-          ),
-        );
-        return;
-      }
+    await _handleMealImageAnalysisResult(result, l10n);
+  }
 
-      final query = _mealImageExtractionService.pickBestMealQuery(extractedText);
-      if (query.trim().isEmpty) {
-        return;
-      }
+  Future<void> _handleMealImageAnalysisResult(
+    MealImageAnalysisResult result,
+    AppLocalizations l10n,
+  ) async {
+    if (result.cancelled) {
+      return;
+    }
 
+    if (result.hasQuery) {
+      final query = result.query!;
       _mealSearchController.text = query;
       await _analyzeMeal(query);
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    String? message;
+    switch (result.failure) {
+      case MealImageAnalysisFailure.barcodeNotFound:
+        message = l10n.tr('barcode_not_found_in_image');
+        break;
+      case MealImageAnalysisFailure.textNotFound:
+        message = l10n.tr('text_not_found_in_image');
+        break;
+      case MealImageAnalysisFailure.barcodeAnalysisFailed:
+        message = l10n.tr(
+          'barcode_image_analysis_failed',
+          args: {'error': '${result.error}'},
+        );
+        break;
+      case MealImageAnalysisFailure.textAnalysisFailed:
+        message = l10n.tr(
+          'text_image_analysis_failed',
+          args: {'error': '${result.error}'},
+        );
+        break;
+      case null:
+        break;
+    }
+
+    if (message != null && message.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            l10n.tr('text_image_analysis_failed', args: {'error': '$e'}),
-          ),
-        ),
+        SnackBar(content: Text(message)),
       );
     }
   }
@@ -1699,7 +1689,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     final validOldPin = await _appLockService.verifyPin(oldPin);
                     if (!validOldPin) {
                       setInnerState(() {
-                        localError = isAr ? 'PIN الحالي غير صحيح' : 'Current PIN is incorrect';
+                        localError = isAr
+                            ? 'PIN الحالي غير صحيح'
+                            : 'Current PIN is incorrect';
                       });
                       return;
                     }
@@ -1715,7 +1707,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
                     if (newPin != confirmPin) {
                       setInnerState(() {
-                        localError = isAr ? 'PIN غير متطابق' : 'PIN confirmation does not match';
+                        localError = isAr
+                            ? 'PIN غير متطابق'
+                            : 'PIN confirmation does not match';
                       });
                       return;
                     }
