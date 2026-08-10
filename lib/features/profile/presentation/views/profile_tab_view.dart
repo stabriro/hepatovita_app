@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 class ProfileTabView extends StatelessWidget {
   final bool isAr;
   final String currentLanguage;
@@ -34,6 +36,7 @@ class ProfileTabView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -47,41 +50,33 @@ class ProfileTabView extends StatelessWidget {
         const SizedBox(height: 10),
         _ProfileTile(
           icon: Icons.lock_rounded,
-          title: isAr ? 'تغيير PIN' : 'Change PIN',
-          subtitle: isAr
-              ? 'قم بتحديث رمز الأمان لحماية بياناتك'
-              : 'Update your app lock PIN',
+          title: l10n.tr('profile_change_pin_title'),
+          subtitle: l10n.tr('profile_change_pin_subtitle'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: onChangePin,
         ),
         const SizedBox(height: 10),
         _ProfileSwitchTile(
           icon: Icons.notifications_active_rounded,
-          title: isAr ? 'إشعارات التنبيه' : 'Critical Alerts Notifications',
-          subtitle: isAr
-              ? 'تفعيل/تعطيل إشعارات التحاليل الحرجة'
-              : 'Enable or disable critical lab alerts',
+          title: l10n.tr('profile_alerts_title'),
+          subtitle: l10n.tr('profile_alerts_subtitle'),
           value: notificationsEnabled,
           onChanged: onNotificationsChanged,
         ),
         const SizedBox(height: 10),
         _ProfileSwitchTile(
           icon: Icons.fingerprint_rounded,
-          title: isAr ? 'فتح بالبصمة/الوجه' : 'Biometric Unlock',
+          title: l10n.tr('profile_biometric_title'),
           subtitle: canUseBiometric
-              ? (isAr
-                    ? 'استخدم البصمة أو الوجه لفتح التطبيق'
-                    : 'Use fingerprint/face to unlock app')
-              : (isAr
-                    ? 'جهازك لا يدعم البصمة أو غير مفعلة'
-                    : 'Biometric authentication is not available on this device'),
+              ? l10n.tr('profile_biometric_subtitle_enabled')
+              : l10n.tr('profile_biometric_subtitle_unavailable'),
           value: biometricEnabled,
           enabled: canUseBiometric,
           onChanged: onBiometricChanged,
         ),
         const SizedBox(height: 14),
         Text(
-          isAr ? 'النسخ الاحتياطي والخصوصية' : 'Backup & Privacy',
+          l10n.tr('profile_backup_section_title'),
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
@@ -91,40 +86,32 @@ class ProfileTabView extends StatelessWidget {
         const SizedBox(height: 8),
         _ProfileTile(
           icon: Icons.picture_as_pdf_rounded,
-          title: isAr ? 'تصدير تقرير PDF طبي' : 'Export Medical PDF Report',
-          subtitle: isAr
-              ? 'إنشاء تقرير مختصر لمشاركته مع الطبيب'
-              : 'Generate a summary report you can share with your doctor',
+          title: l10n.tr('profile_export_pdf_title'),
+          subtitle: l10n.tr('profile_export_pdf_subtitle'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: onExportPdfReport,
         ),
         const SizedBox(height: 10),
         _ProfileTile(
           icon: Icons.upload_file_rounded,
-          title: isAr ? 'تصدير نسخة احتياطية مشفرة' : 'Export Encrypted Backup',
-          subtitle: isAr
-              ? 'احفظ نسخة Hvbk مؤمنة من بياناتك'
-              : 'Save a secure .hvbk backup of your data',
+          title: l10n.tr('profile_export_backup_title'),
+          subtitle: l10n.tr('profile_export_backup_subtitle'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: onExportBackup,
         ),
         const SizedBox(height: 10),
         _ProfileTile(
           icon: Icons.download_rounded,
-          title: isAr ? 'استعادة النسخة الاحتياطية' : 'Restore Backup',
-          subtitle: isAr
-              ? 'استرجع البيانات من ملف نسخة احتياطية'
-              : 'Restore app data from a backup file',
+          title: l10n.tr('profile_restore_backup_title'),
+          subtitle: l10n.tr('profile_restore_backup_subtitle'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: onRestoreBackup,
         ),
         const SizedBox(height: 10),
         _ProfileTile(
           icon: Icons.lock_clock_rounded,
-          title: isAr ? 'قفل التطبيق الآن' : 'Lock App Now',
-          subtitle: isAr
-              ? 'اقفل التطبيق فورا واطلب إعادة التحقق'
-              : 'Immediately lock and require re-authentication',
+          title: l10n.tr('profile_lock_now_title'),
+          subtitle: l10n.tr('profile_lock_now_subtitle'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: onLockNow,
         ),
@@ -146,6 +133,7 @@ class _LanguageSelectorTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -179,7 +167,7 @@ class _LanguageSelectorTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isAr ? 'لغة التطبيق' : 'App Language',
+                      l10n.tr('profile_language_title'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF102018),
@@ -187,7 +175,7 @@ class _LanguageSelectorTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      isAr ? 'غيّر اللغة في أي وقت' : 'Change language anytime',
+                      l10n.tr('profile_language_subtitle'),
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF64748B),
@@ -270,6 +258,7 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -304,7 +293,7 @@ class _ProfileHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isAr ? 'الملف الشخصي والإعدادات' : 'Profile & Settings',
+                  l10n.tr('profile_header_title'),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 17,
@@ -313,7 +302,7 @@ class _ProfileHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isAr ? 'إدارة الأمان والتنبيهات' : 'Manage security and alerts',
+                  l10n.tr('profile_header_subtitle'),
                   style: const TextStyle(color: Colors.white70),
                 ),
               ],

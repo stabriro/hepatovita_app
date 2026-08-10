@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
+import '../../../../l10n/app_localizations.dart';
 import '../../domain/weekly_nutrition_rule_engine.dart';
 
 class WeeklyNutritionPlanTabView extends StatelessWidget {
@@ -21,6 +22,7 @@ class WeeklyNutritionPlanTabView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -42,7 +44,7 @@ class WeeklyNutritionPlanTabView extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  isAr ? 'خطة غذائية أسبوعية ذكية' : 'Weekly Smart Nutrition Plan',
+                  l10n.tr('weekly_plan_title'),
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -53,12 +55,12 @@ class WeeklyNutritionPlanTabView extends StatelessWidget {
               if (plan != null) ...[
                 IconButton(
                   onPressed: onSave,
-                  tooltip: isAr ? 'حفظ' : 'Save',
+                  tooltip: l10n.tr('save'),
                   icon: const Icon(Icons.save_rounded),
                 ),
                 IconButton(
                   onPressed: onRegenerate,
-                  tooltip: isAr ? 'إعادة توليد' : 'Regenerate',
+                  tooltip: l10n.tr('weekly_plan_regenerate'),
                   icon: const Icon(Icons.refresh_rounded),
                 ),
               ],
@@ -66,9 +68,7 @@ class WeeklyNutritionPlanTabView extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            isAr
-                ? 'مُنشأة من نتائج التحاليل لتقليل المخاطر وتحسين الالتزام الأسبوعي.'
-                : 'Generated from lab signals to reduce risk and improve weekly adherence.',
+            l10n.tr('weekly_plan_subtitle'),
             style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 12),
@@ -96,6 +96,7 @@ class _EmptyPlanState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -108,16 +109,14 @@ class _EmptyPlanState extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isAr
-                ? 'لا توجد خطة حالية. أنشئ خطة 7 أيام بناءً على آخر تحاليلك.'
-                : 'No current plan. Generate a 7-day plan from your latest labs.',
+            l10n.tr('weekly_plan_empty_text'),
             style: const TextStyle(fontSize: 12, color: Color(0xFF334155)),
           ),
           const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: onGenerate,
             icon: const Icon(Icons.auto_awesome_rounded),
-            label: Text(isAr ? 'إنشاء الخطة' : 'Generate Plan'),
+            label: Text(l10n.tr('weekly_plan_generate')),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1B3B2B),
               foregroundColor: Colors.white,
@@ -140,6 +139,7 @@ class _PlanBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final generatedAt = DateTime.tryParse(plan.generatedAtIso);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,15 +153,15 @@ class _PlanBody extends StatelessWidget {
             border: Border.all(color: const Color(0xFFBBF7D0)),
           ),
           child: Text(
-            isAr
-                ? 'آخر توليد: ${generatedAt?.toLocal().toString().split('.').first ?? '-'}'
-                : 'Last generated: ${generatedAt?.toLocal().toString().split('.').first ?? '-'}',
+            l10n.tr('weekly_plan_last_generated', args: {
+              'date': generatedAt?.toLocal().toString().split('.').first ?? '-',
+            }),
             style: const TextStyle(fontSize: 11, color: Color(0xFF166534)),
           ),
         ),
         const SizedBox(height: 10),
         Text(
-          isAr ? 'إشارات التحاليل المستخدمة' : 'Used Lab Rule Flags',
+          l10n.tr('weekly_plan_used_flags'),
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
         ),
         const SizedBox(height: 6),
@@ -442,34 +442,35 @@ class _NutritionValuesRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final items = <({IconData icon, String label, String value, Color color})>[
       (
         icon: Icons.local_fire_department_rounded,
-        label: isAr ? 'سعرات' : 'Kcal',
+        label: l10n.tr('weekly_plan_nutrition_kcal'),
         value: '${values.calories}',
         color: const Color(0xFFF97316),
       ),
       (
         icon: Icons.grass_rounded,
-        label: isAr ? 'كربوهيدرات' : 'Carbs',
+        label: l10n.tr('weekly_plan_nutrition_carbs'),
         value: '${values.carbs.toStringAsFixed(1)} g',
         color: const Color(0xFF16A34A),
       ),
       (
         icon: Icons.fitness_center_rounded,
-        label: isAr ? 'بروتين' : 'Protein',
+        label: l10n.tr('weekly_plan_nutrition_protein'),
         value: '${values.protein.toStringAsFixed(1)} g',
         color: const Color(0xFF0EA5E9),
       ),
       (
         icon: Icons.opacity_rounded,
-        label: isAr ? 'دهون' : 'Fats',
+        label: l10n.tr('weekly_plan_nutrition_fats'),
         value: '${values.fats.toStringAsFixed(1)} g',
         color: const Color(0xFFF59E0B),
       ),
       (
         icon: Icons.spa_rounded,
-        label: isAr ? 'ألياف' : 'Fiber',
+        label: l10n.tr('weekly_plan_nutrition_fiber'),
         value: '${values.fiber.toStringAsFixed(1)} g',
         color: const Color(0xFF8B5CF6),
       ),

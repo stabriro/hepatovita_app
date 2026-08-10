@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 class OverviewTabView extends StatelessWidget {
   final bool isAr;
   final int waterAmount;
@@ -38,6 +40,7 @@ class OverviewTabView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final waterPct = (waterAmount / waterGoal).clamp(0.0, 1.0);
     
     return LayoutBuilder(
@@ -89,13 +92,13 @@ class OverviewTabView extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                isAr ? 'مُتتبع شُرب الماء' : 'Hydration Tracker',
+                                l10n.tr('overview_hydration_title'),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
                               ),
                               Text(
-                                isAr ? 'بروتوكول ضبط لزوجة الهيموغلوبين' : 'Elevated Hgb / RBC protocol',
+                                l10n.tr('overview_hydration_subtitle'),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
@@ -220,7 +223,7 @@ class OverviewTabView extends StatelessWidget {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              isAr ? 'أكواب الشاي الأخضر (EGCG)' : 'Green Tea Counter',
+                              l10n.tr('overview_green_tea_counter'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1B3B2B)),
@@ -276,37 +279,37 @@ class OverviewTabView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isAr ? 'قائمة الفحص السريري اليومية' : 'Daily Clinical Checklist',
+                l10n.tr('overview_checklist_title'),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
               ),
               const SizedBox(height: 12),
               _CheckTile(
-                title: isAr ? 'مكمل فيتامين د3' : 'Vitamin D3 Supplement',
-                subtitle: isAr ? 'تناوله حسب وصف الطبيب ومع وجبة مناسبة' : 'Take as prescribed with an appropriate meal',
+                title: l10n.tr('overview_check_vitd_title'),
+                subtitle: l10n.tr('overview_check_vitd_subtitle'),
                 value: chkVitD,
                 onChanged: onChkVitDChanged,
                 tag: 'Vit D',
                 tagColor: Colors.purple,
               ),
               _CheckTile(
-                title: isAr ? '30 دقيقة مشي سريع' : '30-Min Aerobic Walk',
-                subtitle: isAr ? 'تحفيز حرق دهون الكبد وخصائص الإنزيمات' : 'Stimulates hepatic lipid oxidation',
+                title: l10n.tr('overview_check_walk_title'),
+                subtitle: l10n.tr('overview_check_walk_subtitle'),
                 value: walk30,
                 onChanged: onWalk30Changed,
                 tag: 'ALT Care',
                 tagColor: const Color(0xFF2E7D32),
               ),
               _CheckTile(
-                title: isAr ? '15-20 دقيقة شمس الصباح' : '15-20 Mins Morning Sunlight',
-                subtitle: isAr ? 'تحفيز فيتامين د الطبيعي' : 'Triggers natural pre-D3 synthesis',
+                title: l10n.tr('overview_check_sun_title'),
+                subtitle: l10n.tr('overview_check_sun_subtitle'),
                 value: sun15,
                 onChanged: onSun15Changed,
                 tag: 'Sun D3',
                 tagColor: Colors.amber.shade800,
               ),
               _CheckTile(
-                title: isAr ? 'يوم خالي تماماً من المقليات' : 'Strict Non-Fried & Low Saturated Fat Day',
-                subtitle: isAr ? 'حماية خلايا الكبد من الإجهاد' : 'Zero trans-fats to protect hepatocytes',
+                title: l10n.tr('overview_check_low_fat_title'),
+                subtitle: l10n.tr('overview_check_low_fat_subtitle'),
                 value: lowFatDay,
                 onChanged: onLowFatDayChanged,
                 tag: 'ALT/AST',

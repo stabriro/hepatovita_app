@@ -595,6 +595,7 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
     final pin = _pinController.text.trim();
     final confirmPin = _confirmPinController.text.trim();
 
@@ -608,7 +609,7 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
     }
     if (pin != confirmPin) {
       setState(() {
-        _error = widget.isAr ? 'PIN غير متطابق' : 'PIN confirmation does not match';
+        _error = l10n.tr('pin_confirmation_mismatch');
       });
       return;
     }
@@ -625,6 +626,7 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -640,7 +642,7 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        widget.isAr ? 'تفعيل حماية التطبيق' : 'Enable App Security',
+                        l10n.tr('security_enable_title'),
                         style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
@@ -659,7 +661,7 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
                         obscureText: true,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                          labelText: widget.isAr ? 'PIN جديد' : 'New PIN',
+                          labelText: l10n.tr('pin_new_label'),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -668,7 +670,7 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
                         obscureText: true,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                          labelText: widget.isAr ? 'تأكيد PIN' : 'Confirm PIN',
+                          labelText: l10n.tr('pin_confirm_label'),
                         ),
                       ),
                       if (widget.canUseBiometric) ...[
@@ -696,7 +698,7 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: _submit,
-                        child: Text(widget.isAr ? 'حفظ ومتابعة' : 'Save & Continue'),
+                        child: Text(l10n.tr('save_and_continue')),
                       ),
                     ],
                   ),
@@ -751,11 +753,12 @@ class _SecurityUnlockScreenState extends State<SecurityUnlockScreen> {
   }
 
   Future<void> _unlockWithPin() async {
+    final l10n = AppLocalizations.of(context);
     final pin = _pinController.text.trim();
     final ok = await widget.onUnlockWithPin(pin);
     if (!ok && mounted) {
       setState(() {
-        _error = widget.isAr ? 'PIN غير صحيح' : 'Invalid PIN';
+        _error = l10n.tr('pin_invalid');
       });
     }
   }
@@ -773,6 +776,7 @@ class _SecurityUnlockScreenState extends State<SecurityUnlockScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -788,7 +792,7 @@ class _SecurityUnlockScreenState extends State<SecurityUnlockScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        widget.isAr ? 'افتح التطبيق' : 'Unlock App',
+                        l10n.tr('unlock_app_title'),
                         style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
@@ -806,8 +810,8 @@ class _SecurityUnlockScreenState extends State<SecurityUnlockScreen> {
                         controller: _pinController,
                         keyboardType: TextInputType.number,
                         obscureText: true,
-                        decoration: InputDecoration(
-                          labelText: widget.isAr ? 'PIN' : 'PIN',
+                        decoration: const InputDecoration(
+                          labelText: 'PIN',
                         ),
                         onSubmitted: (_) => _unlockWithPin(),
                       ),
@@ -821,7 +825,7 @@ class _SecurityUnlockScreenState extends State<SecurityUnlockScreen> {
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: _unlockWithPin,
-                        child: Text(widget.isAr ? 'دخول' : 'Unlock'),
+                        child: Text(l10n.tr('unlock')),
                       ),
                       const SizedBox(height: 6),
                       TextButton(
@@ -977,6 +981,7 @@ class AppSplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -1037,9 +1042,7 @@ class AppSplashScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  isAr
-                      ? 'مساعد ذكي لصحتك الكبدية والنمط اليومي'
-                      : 'Smart companion for liver health and daily routine',
+                  l10n.tr('splash_subtitle'),
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 15,
@@ -1051,16 +1054,16 @@ class AppSplashScreen extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _SplashTag(label: isAr ? 'تحاليل ديناميكية' : 'Dynamic labs'),
-                    _SplashTag(label: isAr ? 'تتبع يومي' : 'Daily tracking'),
-                    _SplashTag(label: isAr ? 'نسخ احتياطي مشفر' : 'Encrypted backup'),
+                    _SplashTag(label: l10n.tr('splash_tag_dynamic_labs')),
+                    _SplashTag(label: l10n.tr('splash_tag_daily_tracking')),
+                    _SplashTag(label: l10n.tr('splash_tag_encrypted_backup')),
                   ],
                 ),
                 const Spacer(),
                 FilledButton.icon(
                   onPressed: onContinue,
                   icon: const Icon(Icons.arrow_forward_rounded),
-                  label: Text(isAr ? 'ابدأ الآن' : 'Get Started'),
+                  label: Text(l10n.tr('splash_get_started')),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     backgroundColor: Colors.white,
@@ -1725,20 +1728,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Future<void> _deleteMedication(String id) async {
-    final isAr = widget.lang == 'ar';
+    final l10n = AppLocalizations.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(isAr ? 'حذف الدواء؟' : 'Delete medication?'),
-        content: Text(
-          isAr
-              ? 'سيتم حذف الدواء وجدوله اليومي.'
-              : 'This removes the medication and its daily schedule.',
-        ),
+        title: Text(l10n.tr('med_delete_title')),
+        content: Text(l10n.tr('med_delete_subtitle')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(isAr ? 'إلغاء' : 'Cancel'),
+            child: Text(l10n.tr('cancel')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -1746,7 +1745,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               backgroundColor: Colors.red.shade700,
               foregroundColor: Colors.white,
             ),
-            child: Text(isAr ? 'حذف' : 'Delete'),
+            child: Text(l10n.tr('delete')),
           ),
         ],
       ),
@@ -1767,6 +1766,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Future<void> _openMedicationEditor({String? medicationId}) async {
     final isAr = widget.lang == 'ar';
+    final l10n = AppLocalizations.of(context);
     final existing = medicationId == null
         ? null
         : _medications.firstWhere((m) => m.id == medicationId);
@@ -1788,8 +1788,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             return AlertDialog(
               title: Text(
                 existing == null
-                    ? (isAr ? 'إضافة دواء' : 'Add Medication')
-                    : (isAr ? 'تعديل الدواء' : 'Edit Medication'),
+                  ? l10n.tr('med_add_medication')
+                  : l10n.tr('med_edit_medication'),
               ),
               content: SingleChildScrollView(
                 child: Column(
@@ -1798,16 +1798,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     TextField(
                       controller: nameController,
                       decoration: InputDecoration(
-                        labelText:
-                            isAr ? 'اسم الدواء' : 'Medication Name',
+                        labelText: l10n.tr('med_name_label'),
                       ),
                     ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: doseController,
                       decoration: InputDecoration(
-                        labelText:
-                            isAr ? 'الجرعة (مثال: 500mg)' : 'Dose (e.g. 500mg)',
+                        labelText: l10n.tr('med_dose_label'),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1835,7 +1833,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                           border: Border.all(color: const Color(0xFFCBD5E1)),
                         ),
                         child: Text(
-                          '${isAr ? 'وقت التذكير' : 'Reminder Time'}: ${selectedTime.format(dialogContext)}',
+                          '${l10n.tr('med_reminder_time')}: ${selectedTime.format(dialogContext)}',
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF1E293B),
@@ -1849,11 +1847,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: Text(isAr ? 'إلغاء' : 'Cancel'),
+                  child: Text(l10n.tr('cancel')),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(isAr ? 'حفظ' : 'Save'),
+                  child: Text(l10n.tr('save')),
                 ),
               ],
             );
@@ -2265,7 +2263,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Future<List<LabDraft>?> _reviewExtractedLabDrafts(
     List<LabDraft> drafts,
   ) async {
-    final isAr = widget.lang == 'ar';
+    final l10n = AppLocalizations.of(context);
     final items = drafts
         .map((d) => _LabDraftReviewItem(draft: d, selected: true))
         .toList();
@@ -2276,7 +2274,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         return StatefulBuilder(
           builder: (context, setInnerState) {
             return AlertDialog(
-              title: Text(isAr ? 'مراجعة نتائج التحاليل' : 'Review Lab Results'),
+              title: Text(l10n.tr('labs_review_title')),
               content: SizedBox(
                 width: 460,
                 child: Column(
@@ -2284,9 +2282,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isAr
-                          ? 'راجع القيم المستخرجة قبل الحفظ. يمكنك تعديل أي عنصر.'
-                          : 'Review extracted values before saving. You can edit any item.',
+                      l10n.tr('labs_review_subtitle'),
                       style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
                     ),
                     const SizedBox(height: 10),
@@ -2314,7 +2310,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                               '${draft.value} ${draft.unit}  |  ${draft.date}${draft.refRange.isEmpty ? '' : '  |  ${draft.refRange}'}',
                             ),
                             secondary: IconButton(
-                              tooltip: isAr ? 'تعديل' : 'Edit',
+                              tooltip: l10n.tr('edit'),
                               icon: const Icon(Icons.edit_rounded),
                               onPressed: () async {
                                 final edited = await _editExtractedLabDraft(draft);
@@ -2336,11 +2332,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: Text(isAr ? 'إلغاء' : 'Cancel'),
+                  child: Text(l10n.tr('cancel')),
                 ),
                 ElevatedButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(isAr ? 'حفظ المحدد' : 'Save Selected'),
+                  child: Text(l10n.tr('save_selected')),
                 ),
               ],
             );
@@ -2360,7 +2356,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Future<LabDraft?> _editExtractedLabDraft(LabDraft draft) async {
-    final isAr = widget.lang == 'ar';
+    final l10n = AppLocalizations.of(context);
     final metricController = TextEditingController(text: draft.metric);
     final valueController = TextEditingController(text: draft.value);
     final unitController = TextEditingController(text: draft.unit);
@@ -2371,30 +2367,30 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(isAr ? 'تعديل نتيجة' : 'Edit Result'),
+          title: Text(l10n.tr('labs_edit_result_title')),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: metricController,
-                  decoration: InputDecoration(labelText: isAr ? 'اسم الفحص' : 'Metric'),
+                  decoration: InputDecoration(labelText: l10n.tr('labs_metric_label')),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: valueController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(labelText: isAr ? 'القيمة' : 'Value'),
+                  decoration: InputDecoration(labelText: l10n.tr('labs_value_label')),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: unitController,
-                  decoration: InputDecoration(labelText: isAr ? 'الوحدة' : 'Unit'),
+                  decoration: InputDecoration(labelText: l10n.tr('labs_unit_label')),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: refRangeController,
-                  decoration: InputDecoration(labelText: isAr ? 'المدى المرجعي' : 'Reference Range'),
+                  decoration: InputDecoration(labelText: l10n.tr('labs_ref_range_label')),
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -2407,11 +2403,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(isAr ? 'إلغاء' : 'Cancel'),
+              child: Text(l10n.tr('cancel')),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(isAr ? 'حفظ' : 'Save'),
+              child: Text(l10n.tr('save')),
             ),
           ],
         );
@@ -2859,6 +2855,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Future<void> _showChangePinDialog() async {
     final isAr = widget.lang == 'ar';
+    final l10n = AppLocalizations.of(context);
     final oldPinController = TextEditingController();
     final newPinController = TextEditingController();
     final confirmPinController = TextEditingController();
@@ -2870,7 +2867,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         return StatefulBuilder(
           builder: (context, setInnerState) {
             return AlertDialog(
-              title: Text(isAr ? 'تغيير PIN' : 'Change PIN'),
+              title: Text(l10n.tr('profile_change_pin_title')),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2880,7 +2877,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       obscureText: true,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
-                        labelText: isAr ? 'PIN الحالي' : 'Current PIN',
+                        labelText: l10n.tr('pin_current_label'),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -2889,7 +2886,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       obscureText: true,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
-                        labelText: isAr ? 'PIN جديد' : 'New PIN',
+                        labelText: l10n.tr('pin_new_label'),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -2898,7 +2895,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       obscureText: true,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
-                        labelText: isAr ? 'تأكيد PIN' : 'Confirm PIN',
+                        labelText: l10n.tr('pin_confirm_label'),
                       ),
                     ),
                     if (localError != null) ...[
@@ -2914,7 +2911,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(isAr ? 'إلغاء' : 'Cancel'),
+                  child: Text(l10n.tr('cancel')),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -2926,8 +2923,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     if (!validOldPin) {
                       setInnerState(() {
                         localError = isAr
-                            ? 'PIN الحالي غير صحيح'
-                            : 'Current PIN is incorrect';
+                            ? l10n.tr('pin_current_incorrect')
+                            : l10n.tr('pin_current_incorrect');
                       });
                       return;
                     }
@@ -2935,8 +2932,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     if (newPin.length < 4 || int.tryParse(newPin) == null) {
                       setInnerState(() {
                         localError = isAr
-                            ? 'PIN الجديد يجب أن يكون 4 أرقام على الأقل'
-                            : 'New PIN must be at least 4 digits';
+                            ? l10n.tr('pin_new_min_digits')
+                            : l10n.tr('pin_new_min_digits');
                       });
                       return;
                     }
@@ -2944,8 +2941,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     if (newPin != confirmPin) {
                       setInnerState(() {
                         localError = isAr
-                            ? 'PIN غير متطابق'
-                            : 'PIN confirmation does not match';
+                            ? l10n.tr('pin_confirmation_mismatch')
+                            : l10n.tr('pin_confirmation_mismatch');
                       });
                       return;
                     }
@@ -2958,7 +2955,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     }
                     Navigator.of(dialogContext).pop(rotatedRecoveryCode);
                   },
-                  child: Text(isAr ? 'حفظ' : 'Save'),
+                  child: Text(l10n.tr('save')),
                 ),
               ],
             );
@@ -2981,7 +2978,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(isAr ? 'تم تحديث PIN بنجاح' : 'PIN updated successfully'),
+          content: Text(l10n.tr('pin_updated_success')),
         ),
       );
     }
@@ -3026,6 +3023,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final isAr = widget.lang == 'ar';
+    final l10n = AppLocalizations.of(context);
     final score = _dashboardViewModel.score;
     const primaryTabOrder = <int>[0, 2, 4, 6];
     final selectedPrimaryNavIndex = primaryTabOrder.contains(_currentTabIndex)
@@ -3083,19 +3081,19 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             destinations: [
               NavigationDestination(
                 icon: const Icon(Icons.home_rounded),
-                label: isAr ? 'الرئيسية' : 'Home',
+                label: l10n.tr('tab_home'),
               ),
               NavigationDestination(
                 icon: const Icon(Icons.science_rounded),
-                label: isAr ? 'التحاليل' : 'Labs',
+                label: l10n.tr('tab_labs'),
               ),
               NavigationDestination(
                 icon: const Icon(Icons.medication_rounded),
-                label: isAr ? 'الأدوية' : 'Meds',
+                label: l10n.tr('tab_meds'),
               ),
               NavigationDestination(
                 icon: const Icon(Icons.person_rounded),
-                label: isAr ? 'الملف' : 'Profile',
+                label: l10n.tr('tab_profile'),
               ),
             ],
           ),
@@ -3105,19 +3103,18 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Widget _buildAppDrawer(bool isAr) {
+    final l10n = AppLocalizations.of(context);
     return Drawer(
       child: SafeArea(
         child: Column(
           children: [
             ListTile(
               title: Text(
-                isAr ? 'التنقل' : 'Navigation',
+                l10n.tr('drawer_navigation_title'),
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
               subtitle: Text(
-                isAr
-                    ? 'التبويبات الأساسية بالأسفل، وباقي الأقسام هنا.'
-                    : 'Primary tabs are below. Other sections are here.',
+                l10n.tr('drawer_navigation_subtitle'),
               ),
             ),
             const Divider(height: 1),
@@ -3148,7 +3145,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }) {
     return ListTile(
       leading: Icon(_tabIconForIndex(index)),
-      title: Text(_tabLabelForIndex(index, isAr)),
+      title: Text(_tabLabelForIndex(index)),
       selected: _currentTabIndex == index,
       onTap: () {
         Navigator.of(context).pop();
@@ -3178,22 +3175,23 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
   }
 
-  String _tabLabelForIndex(int index, bool isAr) {
+  String _tabLabelForIndex(int index) {
+    final l10n = AppLocalizations.of(context);
     switch (index) {
       case 0:
-        return isAr ? 'الرئيسية' : 'Home';
+        return l10n.tr('tab_home');
       case 1:
-        return isAr ? 'الوجبات' : 'Meals';
+        return l10n.tr('tab_meals');
       case 2:
-        return isAr ? 'التحاليل' : 'Labs';
+        return l10n.tr('tab_labs');
       case 3:
-        return isAr ? 'التثقيف' : 'Education';
+        return l10n.tr('tab_education');
       case 4:
-        return isAr ? 'الأدوية' : 'Meds';
+        return l10n.tr('tab_meds');
       case 5:
-        return isAr ? 'الخطة الأسبوعية' : 'Weekly Plan';
+        return l10n.tr('tab_weekly_plan');
       case 6:
-        return isAr ? 'الملف' : 'Profile';
+        return l10n.tr('tab_profile');
       default:
         return '';
     }
@@ -3230,18 +3228,18 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Widget _buildModernHeroScoreCard(int score, bool isAr) {
+    final l10n = AppLocalizations.of(context);
     final biomarkerTags = _buildHeroBiomarkerTags(isAr);
     return DashboardHeroScoreCard(
       score: score,
       isAr: isAr,
       biomarkerTags: biomarkerTags,
-      emptyBiomarkerText: isAr
-          ? 'لا توجد تحاليل بعد. أضف نتائجك لإظهار المؤشرات الحيوية هنا.'
-          : 'No lab tests yet. Add results to show biomarkers here.',
+      emptyBiomarkerText: l10n.tr('hero_empty_biomarkers'),
     );
   }
 
   List<DashboardHeroBiomarkerTag> _buildHeroBiomarkerTags(bool isAr) {
+    final l10n = AppLocalizations.of(context);
     final tags = <DashboardHeroBiomarkerTag>[];
 
     final liverLab = _findLatestLabByAliases(<String>['alt', 'sgpt', 'ast', 'sgot']);
@@ -3249,7 +3247,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       tags.add(
         DashboardHeroBiomarkerTag(
           value: _formatLabValue(liverLab),
-          label: isAr ? 'إنزيم الكبد' : 'ALT / AST',
+          label: l10n.tr('hero_metric_liver_enzyme'),
           color: Colors.amber,
         ),
       );
@@ -3260,7 +3258,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       tags.add(
         DashboardHeroBiomarkerTag(
           value: _formatLabValue(vitaminDLab),
-          label: isAr ? 'فيتامين د' : 'Vitamin D',
+          label: l10n.tr('hero_metric_vitamin_d'),
           color: Colors.purpleAccent,
         ),
       );
@@ -3271,7 +3269,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       tags.add(
         DashboardHeroBiomarkerTag(
           value: _formatLabValue(hemoglobinLab),
-          label: isAr ? 'الهيموجلوبين' : 'Hemoglobin',
+          label: l10n.tr('hero_metric_hemoglobin'),
           color: Colors.lightBlueAccent,
         ),
       );
@@ -3282,7 +3280,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       tags.add(
         DashboardHeroBiomarkerTag(
           value: _formatLabValue(hba1cLab),
-          label: isAr ? 'التراكمي' : 'HbA1C',
+          label: l10n.tr('hero_metric_hba1c'),
           color: const Color(0xFF81C784),
         ),
       );
@@ -3531,7 +3529,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              isAr ? 'تم حفظ الخطة الأسبوعية.' : 'Weekly plan saved.',
+              AppLocalizations.of(context).tr('weekly_plan_saved'),
             ),
           ),
         );

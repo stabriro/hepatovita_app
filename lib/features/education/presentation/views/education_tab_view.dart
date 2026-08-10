@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 class EducationTabView extends StatelessWidget {
   final bool isAr;
 
@@ -10,6 +12,7 @@ class EducationTabView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Container(
@@ -30,37 +33,29 @@ class EducationTabView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isAr ? 'أبرز الأغذية الفائقة لدعم صحة الكبد' : 'Top Liver Rescue Superfoods',
+                l10n.tr('education_superfoods_title'),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
               ),
               const SizedBox(height: 16),
-              const _SuperfoodCard(
+              _SuperfoodCard(
                 icon: Icons.coffee_rounded,
-                titleAr: 'الشاي الأخضر (EGCG)',
-                titleEn: 'Green Tea (EGCG)',
-                descAr: 'مضاد أكسدة قوي لحماية خلايا الكبد من الإجهاد',
-                descEn: 'Potent hepatocyte antioxidant protection',
+                title: l10n.tr('education_superfood_green_tea_title'),
+                description: l10n.tr('education_superfood_green_tea_desc'),
               ),
-              const _SuperfoodCard(
+              _SuperfoodCard(
                 icon: Icons.eco_rounded,
-                titleAr: 'البروكلي والكرنب',
-                titleEn: 'Broccoli & Kale',
-                descAr: 'يحفز إنزيمات تنظيف سموم الكبد الطبيعية',
-                descEn: 'Boosts hepatic detox enzymes',
+                title: l10n.tr('education_superfood_broccoli_title'),
+                description: l10n.tr('education_superfood_broccoli_desc'),
               ),
-              const _SuperfoodCard(
+              _SuperfoodCard(
                 icon: Icons.phishing_rounded,
-                titleAr: 'السلمون البري (أوميغا-3)',
-                titleEn: 'Wild Salmon (Omega-3)',
-                descAr: 'دهون صحية ممتازة لامتصاص فيتامين د3',
-                descEn: 'Healthy lipids for Vit D3 absorption',
+                title: l10n.tr('education_superfood_salmon_title'),
+                description: l10n.tr('education_superfood_salmon_desc'),
               ),
-              const _SuperfoodCard(
+              _SuperfoodCard(
                 icon: Icons.water_drop_rounded,
-                titleAr: 'زيت الزيتون البكر',
-                titleEn: 'Extra Virgin Olive Oil',
-                descAr: 'دهون غير مشبعة صديقة لإنزيمات ALT/AST',
-                descEn: 'Unsaturated fats gentle on ALT/AST',
+                title: l10n.tr('education_superfood_olive_oil_title'),
+                description: l10n.tr('education_superfood_olive_oil_desc'),
               ),
             ],
           ),
@@ -72,25 +67,17 @@ class EducationTabView extends StatelessWidget {
 
 class _SuperfoodCard extends StatelessWidget {
   final IconData icon;
-  final String titleAr;
-  final String titleEn;
-  final String descAr;
-  final String descEn;
+  final String title;
+  final String description;
 
   const _SuperfoodCard({
     required this.icon,
-    required this.titleAr,
-    required this.titleEn,
-    required this.descAr,
-    required this.descEn,
+    required this.title,
+    required this.description,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isAr = Directionality.of(context) == TextDirection.rtl;
-    final title = isAr ? titleAr : titleEn;
-    final desc = isAr ? descAr : descEn;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -113,7 +100,7 @@ class _SuperfoodCard extends StatelessWidget {
               children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B3B2B))),
                 const SizedBox(height: 2),
-                Text(desc, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                Text(description, style: const TextStyle(color: Colors.grey, fontSize: 11)),
               ],
             ),
           ),

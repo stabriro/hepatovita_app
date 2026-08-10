@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 import '../models/medication_schedule_model.dart';
 
 class MedicationTabView extends StatelessWidget {
@@ -26,6 +28,7 @@ class MedicationTabView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -47,7 +50,7 @@ class MedicationTabView extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  isAr ? 'جدول الأدوية الذكي' : 'Medication Scheduler',
+                  l10n.tr('med_scheduler_title'),
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -58,7 +61,7 @@ class MedicationTabView extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onAddMedication,
                 icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text(isAr ? 'إضافة' : 'Add'),
+                label: Text(l10n.tr('add_short')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1B3B2B),
                   foregroundColor: Colors.white,
@@ -68,9 +71,7 @@ class MedicationTabView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            isAr
-                ? 'نظّم تذكيرات يومية لكل دواء وتتبع جرعاتك بسهولة.'
-                : 'Set daily reminders per medication and track today\'s dose.',
+            l10n.tr('med_scheduler_subtitle'),
             style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 12),
@@ -150,8 +151,8 @@ class MedicationTabView extends StatelessWidget {
                               ),
                               label: Text(
                                 isTakenToday
-                                    ? (isAr ? 'تم أخذ الجرعة اليوم' : 'Taken Today')
-                                    : (isAr ? 'تأكيد أخذ الجرعة' : 'Mark As Taken'),
+                                    ? l10n.tr('med_taken_today')
+                                    : l10n.tr('med_mark_taken'),
                               ),
                             ),
                           ),
@@ -159,12 +160,12 @@ class MedicationTabView extends StatelessWidget {
                           IconButton(
                             onPressed: () => onEditMedication(med.id),
                             icon: const Icon(Icons.edit_rounded),
-                            tooltip: isAr ? 'تعديل' : 'Edit',
+                            tooltip: l10n.tr('edit'),
                           ),
                           IconButton(
                             onPressed: () => onDeleteMedication(med.id),
                             icon: const Icon(Icons.delete_outline_rounded),
-                            tooltip: isAr ? 'حذف' : 'Delete',
+                            tooltip: l10n.tr('delete'),
                           ),
                         ],
                       ),
@@ -190,6 +191,7 @@ class _EmptyMedicationState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -214,7 +216,7 @@ class _EmptyMedicationState extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  isAr ? 'أضف أول دواء الآن' : 'Add your first medication',
+                  l10n.tr('med_empty_title'),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -226,16 +228,14 @@ class _EmptyMedicationState extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            isAr
-                ? 'حدد اسم الدواء والجرعة ووقت التذكير اليومي.'
-                : 'Set medication name, dose, and a daily reminder time.',
+            l10n.tr('med_empty_subtitle'),
             style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
           ),
           const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: onAddMedication,
             icon: const Icon(Icons.add_rounded),
-            label: Text(isAr ? 'إضافة دواء' : 'Add Medication'),
+            label: Text(l10n.tr('med_add_medication')),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1B3B2B),
               foregroundColor: Colors.white,

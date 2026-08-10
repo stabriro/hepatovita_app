@@ -118,7 +118,7 @@ class LabsTabView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isAr ? 'مركز الفحوصات والمؤشرات الحيوية' : 'Biomarker & Clinical Lab Hub',
+                l10n.tr('labs_hub_title'),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
               ),
               const SizedBox(height: 16),
@@ -208,14 +208,14 @@ class LabsTabView extends StatelessWidget {
                                   icon: const Icon(Icons.edit_rounded, size: 18),
                                   constraints: BoxConstraints.tightFor(width: compact ? 32 : 36, height: compact ? 32 : 36),
                                   padding: EdgeInsets.zero,
-                                  tooltip: 'Update lab',
+                                  tooltip: l10n.tr('lab_update_tooltip'),
                                 ),
                                 IconButton(
                                   onPressed: () => onDeleteLab(index),
                                   icon: const Icon(Icons.delete_outline_rounded, size: 18),
                                   constraints: BoxConstraints.tightFor(width: compact ? 32 : 36, height: compact ? 32 : 36),
                                   padding: EdgeInsets.zero,
-                                  tooltip: 'Delete lab',
+                                  tooltip: l10n.tr('lab_delete_tooltip'),
                                 ),
                               ],
                             ),
@@ -254,7 +254,7 @@ class LabsTabView extends StatelessWidget {
                           child: OutlinedButton.icon(
                             onPressed: () => onAddResult(index),
                             icon: const Icon(Icons.show_chart_rounded, size: 16),
-                            label: Text(isAr ? 'إضافة نتيجة' : 'Add Result'),
+                              label: Text(l10n.tr('add_result')),
                           ),
                         ),
                       ],
@@ -444,6 +444,7 @@ class _RichEmptyLabsState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -468,7 +469,7 @@ class _RichEmptyLabsState extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  isAr ? 'ابدأ سجل الفحوصات الآن' : 'Start your biomarker timeline',
+                  l10n.tr('labs_empty_title'),
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
                 ),
               ),
@@ -476,14 +477,12 @@ class _RichEmptyLabsState extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            isAr
-                ? 'أضف أول نتيجة تحليل لتتبع الاتجاهات والحصول على تنبيهات علاجية تلقائية.'
-                : 'Add your first lab result to unlock trend lines and clinical alerts.',
+            l10n.tr('labs_empty_subtitle'),
             style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
           ),
           const SizedBox(height: 10),
           Text(
-            isAr ? '• ابدأ بتحليل ALT أو AST\n• ثم أضف القيم الجديدة مع التاريخ' : '• Start with ALT or AST\n• Add follow-up values with dates',
+            l10n.tr('labs_empty_hint'),
             style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.5),
           ),
           const SizedBox(height: 12),
@@ -492,7 +491,7 @@ class _RichEmptyLabsState extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: onAddLab,
               icon: const Icon(Icons.add_rounded),
-              label: Text(isAr ? 'إضافة أول فحص' : 'Add first lab'),
+              label: Text(l10n.tr('labs_empty_add_first')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1B3B2B),
                 foregroundColor: Colors.white,
