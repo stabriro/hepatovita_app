@@ -259,33 +259,83 @@ class OverviewTabView extends StatelessWidget {
           ),
               ),
             ),
-            if (hasLabs) ...[
-              SizedBox(height: sectionGap),
-              _SectionEntrance(
-                duration: const Duration(milliseconds: 520),
-                yOffset: compact ? 14 : 20,
-                child: Container(
-                  padding: EdgeInsets.all(cardPadding),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: const Color(0xFFE2EDE6)),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x120F2E22),
-                        blurRadius: 20,
-                        offset: Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.tr('overview_checklist_title'),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
-                      ),
-                      const SizedBox(height: 12),
+            SizedBox(height: sectionGap),
+            _SectionEntrance(
+              duration: const Duration(milliseconds: 520),
+              yOffset: compact ? 14 : 20,
+              child: Container(
+                padding: EdgeInsets.all(cardPadding),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: const Color(0xFFE2EDE6)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x120F2E22),
+                      blurRadius: 20,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.tr('overview_checklist_title'),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
+                    ),
+                    const SizedBox(height: 12),
+                    if (!hasLabs)
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF4F7F4),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFD7E7DB)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.science_rounded,
+                                color: Colors.green.shade700,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    l10n.tr('overview_checklist_empty_title'),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: Color(0xFF1B3B2B),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    l10n.tr('overview_checklist_empty_subtitle'),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF64748B),
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else ...[
                       _CheckTile(
                         title: l10n.tr('overview_check_vitd_title'),
                         subtitle: l10n.tr('overview_check_vitd_subtitle'),
@@ -319,10 +369,10 @@ class OverviewTabView extends StatelessWidget {
                         tagColor: Colors.red.shade800,
                       ),
                     ],
-                  ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ],
         );
       },

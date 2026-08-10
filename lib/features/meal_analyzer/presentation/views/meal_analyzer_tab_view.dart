@@ -294,12 +294,34 @@ class MealAnalyzerTabView extends StatelessWidget {
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
                 const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F7F4),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFD7E7DB)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF2E7D32)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.tr('meal_analyzer_educational_note'),
+                          style: const TextStyle(fontSize: 11, height: 1.35, color: Color(0xFF1B3B2B)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     const Icon(Icons.lightbulb_rounded, color: Colors.amber, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      '${l10n.tr('clinical_ordering_modifications')}:',
+                      '${l10n.tr('meal_analyzer_suggestions_title')}:',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B3B2B)),
                     ),
                   ],

@@ -1436,7 +1436,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         );
       }
 
-      if (now.hour >= 18 && _checklistDoneCount() <= 2) {
+      if (_labs.isNotEmpty && now.hour >= 18 && _checklistDoneCount() <= 2) {
         await _maybeSendSmartReminder(
           key: _kReminderChecklist,
           stamp: dayStamp,
