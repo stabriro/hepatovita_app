@@ -24,6 +24,28 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <receiver
+            android:name=".ItmainHomeWidgetProvider"
+            android:exported="true"
+            android:label="Itmain Detailed Widget">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/itmain_home_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".ItmainCompactHomeWidgetProvider"
+            android:exported="true"
+            android:label="Itmain Compact Widget">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/itmain_home_widget_compact_info" />
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

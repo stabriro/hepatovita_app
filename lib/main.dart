@@ -32,6 +32,7 @@ import 'features/meal_analyzer/data/meal_image_extraction_service.dart';
 import 'features/profile/presentation/views/profile_tab_view.dart';
 import 'l10n/app_localizations.dart';
 import 'services/local_notification_service.dart';
+import 'services/home_widget_sync_service.dart';
 import 'services/security/app_lock_service.dart';
 import 'services/security/app_settings_service.dart';
 
@@ -1187,6 +1188,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     });
 
     _requestSmartReminderEvaluation();
+    _requestHomeWidgetSync();
+  }
+
+  @override
+  void didUpdateWidget(covariant MainDashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.lang != widget.lang) {
+      _requestHomeWidgetSync();
+    }
   }
 
   @override
@@ -1205,6 +1215,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
     setState(() {});
     _requestSmartReminderEvaluation();
+    _requestHomeWidgetSync();
   }
 
   void _onLabsViewModelChanged() {
@@ -1228,7 +1239,90 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       }
       _maybeShowCriticalAlertPopup();
       _requestSmartReminderEvaluation();
+      _requestHomeWidgetSync();
     });
+  }
+
+  void _requestHomeWidgetSync() {
+    unawaited(_syncHomeWidget());
+  }
+
+  Future<void> _syncHomeWidget() async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+
+    await HomeWidgetSyncService.syncDashboardSnapshot(
+      isAr: widget.lang == 'ar',
+      waterAmount: _dashboardViewModel.waterAmount,
+      waterGoal: _dashboardViewModel.waterGoal,
+      greenTeaCount: _dashboardViewModel.greenTeaCount,
+      teaGoal: _dashboardViewModel.teaGoal,
+      chkVitD: _dashboardViewModel.chkVitD,
+      walk30: _dashboardViewModel.walk30,
+      sun15: _dashboardViewModel.sun15,
+      lowFatDay: _dashboardViewModel.lowFatDay,
+      score: _dashboardViewModel.score,
+    );
+  }
+
+  Future<void> _applyPendingHomeWidgetActions() async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+
+    final pending = await HomeWidgetSyncService.consumePendingActions();
+    if (!pending.hasActions) {
+      return;
+    }
+
+    if (pending.waterDeltaMl > 0) {
+      await _dashboardActionsCoordinator.addWater(
+        delta: pending.waterDeltaMl,
+        labs: _labsAsMapList(),
+      );
+    }
+
+    for (int i = 0; i < pending.taskCompletions; i++) {
+      final applied = await _completeNextChecklistTaskFromWidget();
+      if (!applied) {
+        break;
+      }
+    }
+
+    _requestHomeWidgetSync();
+  }
+
+  Future<bool> _completeNextChecklistTaskFromWidget() async {
+    if (!_dashboardViewModel.chkVitD) {
+      await _dashboardActionsCoordinator.setChecklistValue(
+        chkVitD: true,
+        labs: _labsAsMapList(),
+      );
+      return true;
+    }
+    if (!_dashboardViewModel.walk30) {
+      await _dashboardActionsCoordinator.setChecklistValue(
+        walk30: true,
+        labs: _labsAsMapList(),
+      );
+      return true;
+    }
+    if (!_dashboardViewModel.sun15) {
+      await _dashboardActionsCoordinator.setChecklistValue(
+        sun15: true,
+        labs: _labsAsMapList(),
+      );
+      return true;
+    }
+    if (!_dashboardViewModel.lowFatDay) {
+      await _dashboardActionsCoordinator.setChecklistValue(
+        lowFatDay: true,
+        labs: _labsAsMapList(),
+      );
+      return true;
+    }
+    return false;
   }
 
   void _requestSmartReminderEvaluation() {
@@ -1408,6 +1502,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Future<void> _loadPersistedState() async {
     await _dashboardActionsCoordinator.loadPersistedState();
+    await _applyPendingHomeWidgetActions();
   }
 
   Future<void> _loadLabHistory() async {

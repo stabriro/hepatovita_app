@@ -21,6 +21,8 @@ subprojects {
             force 'androidx.activity:activity-ktx:1.8.2'
             force 'androidx.core:core:1.13.1'
             force 'androidx.core:core-ktx:1.13.1'
+            force 'androidx.work:work-runtime:2.9.0'
+            force 'androidx.work:work-runtime-ktx:2.9.0'
         }
     }
 }
