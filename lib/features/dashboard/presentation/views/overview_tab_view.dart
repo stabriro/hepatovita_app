@@ -55,32 +55,41 @@ class OverviewTabView extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.lightBlue.shade50,
-                          borderRadius: BorderRadius.circular(16),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.lightBlue.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.water_drop_rounded, color: Colors.lightBlue, size: 24),
                         ),
-                        child: const Icon(Icons.water_drop_rounded, color: Colors.lightBlue, size: 24),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isAr ? 'مُتتبع شُرب الماء (3.0 لتر)' : '3.0L Hydration Station',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isAr ? 'مُتتبع شُرب الماء (3.0 لتر)' : '3.0L Hydration Station',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
+                              ),
+                              Text(
+                                isAr ? 'بروتوكول ضبط لزوجة الهيموغلوبين' : 'Elevated Hgb / RBC protocol',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                              ),
+                            ],
                           ),
-                          Text(
-                            isAr ? 'بروتوكول ضبط لزوجة الهيموغلوبين' : 'Elevated Hgb / RBC protocol',
-                            style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -187,17 +196,25 @@ class OverviewTabView extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.coffee_rounded, color: Color(0xFF2E7D32), size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          isAr ? 'أكواب الشاي الأخضر (EGCG)' : 'Green Tea Counter',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1B3B2B)),
-                        ),
-                      ],
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.coffee_rounded, color: Color(0xFF2E7D32), size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              isAr ? 'أكواب الشاي الأخضر (EGCG)' : 'Green Tea Counter',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1B3B2B)),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
                           onPressed: () => onChangeTea(-1),
@@ -302,22 +319,44 @@ class _CheckTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade300),
       ),
-      child: CheckboxListTile(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: tagColor.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
-              child: Text(tag, style: TextStyle(color: tagColor, fontSize: 9, fontWeight: FontWeight.bold)),
-            ),
-          ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => onChanged(!value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Row(
+            children: [
+              Checkbox(
+                value: value,
+                activeColor: const Color(0xFF2E7D32),
+                onChanged: (v) => onChanged(v ?? false),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(color: tagColor.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
+                          child: Text(tag, style: TextStyle(color: tagColor, fontSize: 9, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.black54)),
-        value: value,
-        activeColor: const Color(0xFF2E7D32),
-        onChanged: (v) => onChanged(v ?? false),
       ),
     );
   }

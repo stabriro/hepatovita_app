@@ -35,38 +35,48 @@ class DashboardHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    'Hepato',
-                    style: TextStyle(
-                      fontFamily: isAr ? 'Cairo' : 'Outfit',
-                      fontWeight: FontWeight.w900,
-                      fontSize: 20,
-                      color: Colors.white,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Hepato',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: isAr ? 'Cairo' : 'Outfit',
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    'Vita',
-                    style: TextStyle(
-                      fontFamily: isAr ? 'Cairo' : 'Outfit',
-                      fontWeight: FontWeight.w900,
-                      fontSize: 20,
-                      color: const Color(0xFF81C784),
+                    const SizedBox(width: 3),
+                    Flexible(
+                      child: Text(
+                        'Vita',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: isAr ? 'Cairo' : 'Outfit',
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                          color: const Color(0xFF81C784),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              Text(
-                isAr ? 'رفيقك الصحي والسريري الكبدي' : 'Metabolic & Liver Companion',
-                style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500),
-              ),
-            ],
+                  ],
+                ),
+                Text(
+                  isAr ? 'رفيقك الصحي والسريري الكبدي' : 'Metabolic & Liver Companion',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
@@ -92,7 +102,7 @@ class DashboardHeader extends StatelessWidget {
                   onTap: () => onLanguageChanged('ar'),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: lang == 'ar' ? const Color(0xFF2E7D32) : Colors.transparent,
                       borderRadius: BorderRadius.circular(12),
@@ -149,9 +159,13 @@ class DashboardHeroScoreCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          isAr ? 'الملف الصحي والسريري للمريض' : 'Clinical Patient Profile',
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        Expanded(
+                          child: Text(
+                            isAr ? 'الملف الصحي والسريري للمريض' : 'Clinical Patient Profile',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
                         ),
                         const SizedBox(width: 6),
                         Container(
@@ -207,8 +221,10 @@ class DashboardHeroScoreCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white10),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              runSpacing: 8,
               children: [
                 _PillarTag(value: 'ALT 58', label: isAr ? 'إنزيم الكبد' : 'ALT / AST', color: Colors.amber),
                 _PillarTag(value: '16 ng/mL', label: isAr ? 'فيتامين د' : 'Vitamin D', color: Colors.purpleAccent),

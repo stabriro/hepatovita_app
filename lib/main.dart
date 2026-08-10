@@ -1,9 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'app/di.dart';
-import 'data/app_database.dart';
+import 'app/services/app_persistence_coordinator.dart';
 import 'features/dashboard/presentation/views/dashboard_shell_widgets.dart';
 import 'features/dashboard/presentation/views/overview_tab_view.dart';
 import 'features/dashboard/presentation/viewmodels/dashboard_view_model.dart';
@@ -22,6 +24,10 @@ import 'services/local_notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   await LocalNotificationService.instance.init();
   runApp(const HepatoVitaApp());
 }
@@ -232,9 +238,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final TextEditingController _mealSearchController = TextEditingController();
   final DashboardViewModel _dashboardViewModel = DashboardViewModel();
   final MealAnalyzerViewModel _mealAnalyzerViewModel = MealAnalyzerViewModel();
-  Map<String, List<LabHistoryEntry>> _labHistoryByMetric = {};
+  Map<String, List<domain.LabHistoryEntity>> _labHistoryByMetric = {};
   final Set<String> _shownCriticalAlertKeys = <String>{};
   final LabsViewModel _labsViewModel = AppDi.provideLabsViewModel();
+  final AppPersistenceCoordinator _persistenceCoordinator =
+      AppDi.provideAppPersistenceCoordinator();
   final EvaluateLabGoalUseCase _evaluateLabGoal = EvaluateLabGoalUseCase();
   final LabAlertPresenter _labAlertPresenter = const LabAlertPresenter();
   late final GenerateLabAlertsUseCase _generateLabAlertsUseCase =
@@ -245,7 +253,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     super.initState();
     _labsViewModel.addListener(_onLabsViewModelChanged);
     _loadPersistedState();
-    _labsViewModel.load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _labsViewModel.load();
+    });
   }
 
   @override
@@ -263,26 +273,19 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     setState(() {
       _labs = _labsViewModel.labs.map(_fromLabEntity).toList();
 
-      final grouped = <String, List<LabHistoryEntry>>{};
+      final grouped = <String, List<domain.LabHistoryEntity>>{};
       _labsViewModel.historyByMetric.forEach((metric, entries) {
-        grouped[metric] = entries
-            .map(
-              (e) => LabHistoryEntry(
-                id: e.id,
-                metric: e.metric,
-                value: e.value,
-                unit: e.unit,
-                status: e.status,
-                date: e.date,
-                createdAt: e.createdAt,
-              ),
-            )
-            .toList();
+        grouped[metric] = List<domain.LabHistoryEntity>.from(entries);
       });
       _labHistoryByMetric = grouped;
     });
 
-    _maybeShowCriticalAlertPopup();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _maybeShowCriticalAlertPopup();
+    });
   }
 
   LabEntity _toLabEntity(LabEntry entry) {
@@ -314,21 +317,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Future<void> _loadPersistedState() async {
-    final snapshot = await AppDatabase.instance.loadState();
-    if (!mounted || snapshot == null) {
+    await _persistenceCoordinator.loadUiState(
+      dashboardViewModel: _dashboardViewModel,
+      mealAnalyzerViewModel: _mealAnalyzerViewModel,
+    );
+    if (!mounted) {
       return;
     }
 
     setState(() {
-      _dashboardViewModel.hydrateFromSnapshot(
-        waterAmount: snapshot.waterAmount,
-        greenTeaCount: snapshot.greenTeaCount,
-        chkVitD: snapshot.chkVitD,
-        walk30: snapshot.walk30,
-        sun15: snapshot.sun15,
-        lowFatDay: snapshot.lowFatDay,
-      );
-      _mealAnalyzerViewModel.hydrateFromSnapshot(snapshot.analyzedResult);
+      // Coordinator mutates viewmodels; this rebuild reflects hydrated values.
     });
   }
 
@@ -409,25 +407,20 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Future<void> _exportBackupFile() async {
     final l10n = AppLocalizations.of(context);
-    final defaultFileName = 'hepatovita_backup_${DateTime.now().toIso8601String().split('T').first}.db';
-    final path = await FilePicker.platform.saveFile(
-      dialogTitle: l10n.tr('save_sqlite_backup'),
-      fileName: defaultFileName,
-      type: FileType.custom,
-      allowedExtensions: ['db'],
-    );
-
-    if (path == null) {
-      return;
-    }
-
     try {
-      final savedPath = await AppDatabase.instance.exportDatabaseTo(path);
+      final savedPath = await _persistenceCoordinator.exportDatabase(
+        defaultFileName:
+            'hepatovita_backup_${DateTime.now().toIso8601String().split('T').first}.db',
+        dialogTitle: l10n.tr('save_sqlite_backup'),
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.tr('backup_saved_to', args: {'path': savedPath}))),
       );
     } catch (e) {
+      if (_persistenceCoordinator.isUserCancelled(e)) {
+        return;
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.tr('backup_failed', args: {'error': '$e'}))),
@@ -437,13 +430,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Future<void> _restoreBackupFile() async {
     final l10n = AppLocalizations.of(context);
-    final file = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['db'],
-      allowMultiple: false,
-    );
-
-    if (file == null || file.files.isEmpty || file.files.single.path == null) {
+    final selected = await _persistenceCoordinator.importDatabaseFromPicker();
+    if (!selected) {
       return;
     }
 
@@ -476,7 +464,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
 
     try {
-      await AppDatabase.instance.importDatabaseFrom(file.files.single.path!);
       await _reloadAllData();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -491,17 +478,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Future<void> _savePersistedState() async {
-    final snapshot = AppSnapshot(
-      waterAmount: _dashboardViewModel.waterAmount,
-      greenTeaCount: _dashboardViewModel.greenTeaCount,
-      chkVitD: _dashboardViewModel.chkVitD,
-      walk30: _dashboardViewModel.walk30,
-      sun15: _dashboardViewModel.sun15,
-      lowFatDay: _dashboardViewModel.lowFatDay,
-      analyzedResult: _mealAnalyzerViewModel.analyzedResult,
+    await _persistenceCoordinator.saveUiState(
+      dashboardViewModel: _dashboardViewModel,
+      mealAnalyzerViewModel: _mealAnalyzerViewModel,
       labs: _labs.map((e) => e.toMap()).toList(),
     );
-    await AppDatabase.instance.saveState(snapshot);
   }
 
   String _autoStatusFromRange(double value, String refRange) {
@@ -546,19 +527,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   String _trendLabel(LabEntry lab) {
     final l10n = AppLocalizations.of(context);
-    final domainHistory = (_labHistoryByMetric[lab.metric] ?? <LabHistoryEntry>[])
-        .map(
-          (e) => domain.LabHistoryEntity(
-            id: e.id,
-            metric: e.metric,
-            value: e.value,
-            unit: e.unit,
-            status: e.status,
-            date: e.date,
-            createdAt: e.createdAt,
-          ),
-        )
-        .toList();
+    final domainHistory =
+        _labHistoryByMetric[lab.metric] ?? <domain.LabHistoryEntity>[];
 
     final trend =
         _generateLabAlertsUseCase.evaluateTrend(_toLabEntity(lab), domainHistory);
@@ -576,23 +546,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Map<String, List<domain.LabHistoryEntity>> _toDomainHistoryByMetric() {
-    final domainHistoryByMetric = <String, List<domain.LabHistoryEntity>>{};
-    _labHistoryByMetric.forEach((metric, entries) {
-      domainHistoryByMetric[metric] = entries
-          .map(
-            (e) => domain.LabHistoryEntity(
-              id: e.id,
-              metric: e.metric,
-              value: e.value,
-              unit: e.unit,
-              status: e.status,
-              date: e.date,
-              createdAt: e.createdAt,
-            ),
-          )
-          .toList();
-    });
-    return domainHistoryByMetric;
+    return _labHistoryByMetric;
   }
 
   List<LabAlertUiModel> _generateLabAlerts(AppLocalizations l10n) {
