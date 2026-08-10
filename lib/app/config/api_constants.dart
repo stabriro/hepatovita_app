@@ -6,5 +6,5 @@ class ApiConstants {
     static const openFoodFactsProductUrlPrefix =
             'https://world.openfoodfacts.org/api/v2/product';
   static const openFoodFactsUserAgent =
-      'hepatovita-app/1.0 (contact: support@hepatovita.local)';
+      'itmain-app/1.0 (contact: support@itmain.local)';
 }

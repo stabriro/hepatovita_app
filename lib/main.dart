@@ -41,30 +41,35 @@ Future<void> main() async {
     databaseFactory = databaseFactoryFfi;
   }
   await LocalNotificationService.instance.init();
-  runApp(const HepatoVitaApp());
+  runApp(const ItmainApp());
 }
 
-class HepatoVitaApp extends StatefulWidget {
-  const HepatoVitaApp({super.key});
+class ItmainApp extends StatefulWidget {
+  const ItmainApp({super.key});
 
   @override
-  State<HepatoVitaApp> createState() => _HepatoVitaAppState();
+  State<ItmainApp> createState() => _ItmainAppState();
 }
 
-class _HepatoVitaAppState extends State<HepatoVitaApp>
+class _ItmainAppState extends State<ItmainApp>
     with WidgetsBindingObserver {
   static const _kHasSeenSplash = 'has_seen_splash';
+  static const _kSelectedLanguageCode = 'selected_language_code';
+  static const _kHasSelectedLanguage = 'has_selected_language';
   final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
   final AppLockService _appLockService = AppLockService.instance;
   Locale _locale = const Locale('en');
   bool _isBootstrapping = true;
   bool _showSplash = true;
+  bool _needsLanguageSetup = false;
   bool _needsPinSetup = false;
   bool _isLocked = false;
   bool _biometricAvailable = false;
   bool _biometricAllowed = false;
   DateTime? _skipNextResumeLockUntil;
+  DateTime? _lastSuccessfulUnlockAt;
+  AppLifecycleState? _lastLifecycleState;
   Timer? _splashTimer;
 
   @override
@@ -77,6 +82,9 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
   Future<void> _initializeLaunchFlow() async {
     final prefs = await SharedPreferences.getInstance();
     final hasSeenSplash = prefs.getBool(_kHasSeenSplash) ?? false;
+    final savedLangCode = prefs.getString(_kSelectedLanguageCode);
+    final hasSelectedLanguage =
+        (prefs.getBool(_kHasSelectedLanguage) ?? false) || savedLangCode != null;
     final hasPin = await _appLockService.hasPin();
     final biometricEnabled = await _appLockService.isBiometricEnabled();
     final canUseBiometrics = await _appLockService.canUseBiometrics();
@@ -85,10 +93,28 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
       return;
     }
 
+    if (savedLangCode != null && savedLangCode.isNotEmpty) {
+      _locale = Locale(savedLangCode);
+    }
+
+    if (!hasSelectedLanguage) {
+      setState(() {
+        _isBootstrapping = false;
+        _showSplash = false;
+        _needsLanguageSetup = true;
+        _needsPinSetup = !hasPin;
+        _isLocked = hasPin;
+        _biometricAvailable = canUseBiometrics;
+        _biometricAllowed = biometricEnabled && canUseBiometrics;
+      });
+      return;
+    }
+
     if (hasSeenSplash) {
       setState(() {
         _isBootstrapping = false;
         _showSplash = false;
+        _needsLanguageSetup = false;
         _needsPinSetup = !hasPin;
         _isLocked = hasPin;
         _biometricAvailable = canUseBiometrics;
@@ -100,6 +126,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
     setState(() {
       _isBootstrapping = false;
       _showSplash = true;
+      _needsLanguageSetup = false;
       _needsPinSetup = !hasPin;
       _isLocked = hasPin;
       _biometricAvailable = canUseBiometrics;
@@ -125,6 +152,25 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
     setState(() {
       _showSplash = false;
     });
+  }
+
+  Future<void> _completeLanguageSelection(String languageCode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kSelectedLanguageCode, languageCode);
+    await prefs.setBool(_kHasSelectedLanguage, true);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _locale = Locale(languageCode);
+      _needsLanguageSetup = false;
+      _showSplash = true;
+    });
+
+    _splashTimer?.cancel();
+    _splashTimer = Timer(const Duration(seconds: 2), _handleSplashContinue);
   }
 
   Future<void> _completePinSetup({
@@ -160,6 +206,8 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
     setState(() {
       _isLocked = false;
     });
+    _lastSuccessfulUnlockAt = DateTime.now();
+    _skipNextResumeLock(duration: const Duration(seconds: 12));
     return true;
   }
 
@@ -172,6 +220,8 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
     setState(() {
       _isLocked = false;
     });
+    _lastSuccessfulUnlockAt = DateTime.now();
+    _skipNextResumeLock(duration: const Duration(seconds: 12));
     return true;
   }
 
@@ -193,7 +243,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
         await _recoverWithRecoveryCode();
       } else {
         final messengerContext = _rootNavigatorKey.currentContext;
-        if (messengerContext == null) {
+        if (messengerContext == null || !messengerContext.mounted) {
           return;
         }
 
@@ -221,7 +271,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
         await _recoverWithRecoveryCode();
       } else {
         final messengerContext = _rootNavigatorKey.currentContext;
-        if (messengerContext == null) {
+        if (messengerContext == null || !messengerContext.mounted) {
           return;
         }
 
@@ -400,7 +450,19 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final previous = _lastLifecycleState;
+    _lastLifecycleState = state;
+
     if (state == AppLifecycleState.resumed) {
+      if (previous == null || previous == AppLifecycleState.resumed) {
+        return;
+      }
+
+      final unlockedAt = _lastSuccessfulUnlockAt;
+      if (unlockedAt != null && DateTime.now().difference(unlockedAt) < const Duration(seconds: 12)) {
+        return;
+      }
+
       final skipUntil = _skipNextResumeLockUntil;
       if (skipUntil != null && DateTime.now().isBefore(skipUntil)) {
         _skipNextResumeLockUntil = null;
@@ -417,7 +479,13 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
     super.dispose();
   }
 
-  void _toggleLanguage(String lang) {
+  Future<void> _toggleLanguage(String lang) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kSelectedLanguageCode, lang);
+    await prefs.setBool(_kHasSelectedLanguage, true);
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _locale = Locale(lang);
     });
@@ -436,7 +504,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      title: 'HepatoVita Companion',
+      title: 'اطمئن',
       debugShowCheckedModeBanner: false,
       theme: HealthyTheme.theme(isAr: isAr),
       home: Directionality(
@@ -452,6 +520,11 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
                   key: const ValueKey('splash'),
                   isAr: isAr,
                   onContinue: _handleSplashContinue,
+                )
+              : _needsLanguageSetup
+              ? LanguageSetupScreen(
+                  key: const ValueKey('language_setup'),
+                  onLanguageSelected: _completeLanguageSelection,
                 )
               : _needsPinSetup
               ? SecurityPinSetupScreen(
@@ -472,7 +545,7 @@ class _HepatoVitaAppState extends State<HepatoVitaApp>
               : MainDashboardScreen(
                   key: const ValueKey('main_dashboard'),
                   lang: _locale.languageCode,
-                  onLanguageChanged: _toggleLanguage,
+                  onLanguageChanged: (lang) => _toggleLanguage(lang),
                   onLockRequested: _lockNow,
                   onExternalIntentStarted: _skipNextResumeLock,
                 ),
@@ -770,6 +843,119 @@ class _SecurityUnlockScreenState extends State<SecurityUnlockScreen> {
   }
 }
 
+class LanguageSetupScreen extends StatelessWidget {
+  final ValueChanged<String> onLanguageSelected;
+
+  const LanguageSetupScreen({
+    super.key,
+    required this.onLanguageSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF1F7F3), Color(0xFFE8F2EC), Color(0xFFF7FBF9)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(color: const Color(0xFFDDE6E0)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x1A1A4D3B),
+                        blurRadius: 24,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Icon(
+                        Icons.language_rounded,
+                        size: 42,
+                        color: Color(0xFF1F5A45),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Choose your language',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF102018),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'اختر لغة التطبيق',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1F5A45),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'You can change language later from Profile settings.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      ),
+                      const SizedBox(height: 18),
+                      ElevatedButton(
+                        onPressed: () => onLanguageSelected('en'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B3B2B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text('English', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton(
+                        onPressed: () => onLanguageSelected('ar'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF1B3B2B),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: Color(0xFF1F5A45)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text('العربية', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AppSplashScreen extends StatelessWidget {
   final bool isAr;
   final VoidCallback onContinue;
@@ -799,23 +985,38 @@ class AppSplashScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Spacer(),
-                Container(
-                  width: 112,
-                  height: 112,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: const Icon(
-                    Icons.favorite_rounded,
-                    size: 52,
-                    color: Colors.white,
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.92, end: 1),
+                  duration: const Duration(milliseconds: 900),
+                  curve: Curves.easeOutBack,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: value,
+                      child: child,
+                    );
+                  },
+                  child: Container(
+                    width: 118,
+                    height: 118,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0x66FFFFFF), Color(0x22FFFFFF)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.white30),
+                    ),
+                    child: const Icon(
+                      Icons.favorite_rounded,
+                      size: 58,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 22),
                 Text(
-                  'HepatoVita',
+                  'اطمئن',
                   textAlign: TextAlign.start,
                   style: TextStyle(
                     color: Colors.white,
@@ -835,6 +1036,16 @@ class AppSplashScreen extends StatelessWidget {
                     fontSize: 15,
                     height: 1.4,
                   ),
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _SplashTag(label: isAr ? 'تحاليل ديناميكية' : 'Dynamic labs'),
+                    _SplashTag(label: isAr ? 'تتبع يومي' : 'Daily tracking'),
+                    _SplashTag(label: isAr ? 'نسخ احتياطي مشفر' : 'Encrypted backup'),
+                  ],
                 ),
                 const Spacer(),
                 FilledButton.icon(
@@ -857,6 +1068,32 @@ class AppSplashScreen extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SplashTag extends StatelessWidget {
+  final String label;
+
+  const _SplashTag({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
         ),
       ),
     );
@@ -1096,7 +1333,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     try {
       final savedPath = await _persistenceCoordinator.exportDatabase(
         defaultFileName:
-            'hepatovita_backup_${DateTime.now().toIso8601String().split('T').first}.hvbk',
+            'itmain_backup_${DateTime.now().toIso8601String().split('T').first}.hvbk',
         dialogTitle: l10n.tr('save_sqlite_backup'),
       );
       if (!mounted) return;
@@ -1104,8 +1341,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       if (Platform.isAndroid || Platform.isIOS) {
         await Share.shareXFiles(
           [XFile(savedPath)],
-          subject: 'HepatoVita Backup',
-          text: 'HepatoVita backup (.hvbk)',
+          subject: 'اطمئن Backup',
+          text: 'اطمئن backup (.hvbk)',
         );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1921,8 +2158,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Widget _buildModernHeader(bool isAr) {
     return DashboardHeader(
       isAr: isAr,
-      lang: widget.lang,
-      onLanguageChanged: widget.onLanguageChanged,
     );
   }
 
@@ -2057,6 +2292,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Widget _buildModernProfileTab(bool isAr) {
     return ProfileTabView(
       isAr: isAr,
+      currentLanguage: widget.lang,
+      onLanguageChanged: widget.onLanguageChanged,
       notificationsEnabled: _notificationsEnabled,
       biometricEnabled: _biometricEnabled,
       canUseBiometric: _canUseBiometric,

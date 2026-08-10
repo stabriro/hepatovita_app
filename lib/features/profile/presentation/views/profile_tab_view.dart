@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 class ProfileTabView extends StatelessWidget {
   final bool isAr;
+  final String currentLanguage;
   final bool notificationsEnabled;
   final bool biometricEnabled;
   final bool canUseBiometric;
+  final ValueChanged<String> onLanguageChanged;
   final ValueChanged<bool> onNotificationsChanged;
   final ValueChanged<bool> onBiometricChanged;
   final VoidCallback onChangePin;
@@ -15,9 +17,11 @@ class ProfileTabView extends StatelessWidget {
   const ProfileTabView({
     super.key,
     required this.isAr,
+    required this.currentLanguage,
     required this.notificationsEnabled,
     required this.biometricEnabled,
     required this.canUseBiometric,
+    required this.onLanguageChanged,
     required this.onNotificationsChanged,
     required this.onBiometricChanged,
     required this.onChangePin,
@@ -33,6 +37,12 @@ class ProfileTabView extends StatelessWidget {
       children: [
         _ProfileHeader(isAr: isAr),
         const SizedBox(height: 12),
+        _LanguageSelectorTile(
+          isAr: isAr,
+          currentLanguage: currentLanguage,
+          onLanguageChanged: onLanguageChanged,
+        ),
+        const SizedBox(height: 10),
         _ProfileTile(
           icon: Icons.lock_rounded,
           title: isAr ? 'تغيير PIN' : 'Change PIN',
@@ -107,6 +117,136 @@ class ProfileTabView extends StatelessWidget {
           onTap: onLockNow,
         ),
       ],
+    );
+  }
+}
+
+class _LanguageSelectorTile extends StatelessWidget {
+  final bool isAr;
+  final String currentLanguage;
+  final ValueChanged<String> onLanguageChanged;
+
+  const _LanguageSelectorTile({
+    required this.isAr,
+    required this.currentLanguage,
+    required this.onLanguageChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFDDE6E0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120F2E22),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEF5F0),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.language_rounded, color: Color(0xFF1B3B2B), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isAr ? 'لغة التطبيق' : 'App Language',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF102018),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isAr ? 'غيّر اللغة في أي وقت' : 'Change language anytime',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _LanguageChoiceButton(
+                  title: 'English',
+                  active: currentLanguage == 'en',
+                  onTap: () => onLanguageChanged('en'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _LanguageChoiceButton(
+                  title: 'العربية',
+                  active: currentLanguage == 'ar',
+                  onTap: () => onLanguageChanged('ar'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LanguageChoiceButton extends StatelessWidget {
+  final String title;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _LanguageChoiceButton({
+    required this.title,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF1F5A45) : const Color(0xFFF4F7F4),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: active ? const Color(0xFF1B3B2B) : const Color(0xFFD9E4DD),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: active ? Colors.white : const Color(0xFF1E293B),
+          ),
+        ),
+      ),
     );
   }
 }

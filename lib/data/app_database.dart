@@ -16,6 +16,7 @@ class AppSnapshot {
   final bool lowFatDay;
   final Map<String, dynamic>? analyzedResult;
   final List<Map<String, dynamic>> labs;
+  final DateTime? updatedAt;
 
   AppSnapshot({
     required this.waterAmount,
@@ -26,6 +27,7 @@ class AppSnapshot {
     required this.lowFatDay,
     required this.analyzedResult,
     required this.labs,
+    this.updatedAt,
   });
 
   Map<String, dynamic> toDbMap() {
@@ -53,14 +55,15 @@ class AppSnapshot {
             .toList();
 
     return AppSnapshot(
-      waterAmount: (map['water_amount'] as num?)?.toInt() ?? 1250,
-      greenTeaCount: (map['green_tea_count'] as num?)?.toInt() ?? 1,
+      waterAmount: (map['water_amount'] as num?)?.toInt() ?? 0,
+      greenTeaCount: (map['green_tea_count'] as num?)?.toInt() ?? 0,
       chkVitD: (map['chk_vit_d'] as num? ?? 0) == 1,
       walk30: (map['walk_30'] as num? ?? 0) == 1,
       sun15: (map['sun_15'] as num? ?? 0) == 1,
       lowFatDay: (map['low_fat_day'] as num? ?? 0) == 1,
       analyzedResult: rawAnalyzed == null ? null : jsonDecode(rawAnalyzed) as Map<String, dynamic>,
       labs: decodedLabs,
+      updatedAt: DateTime.tryParse((map['updated_at'] ?? '').toString()),
     );
   }
 }

@@ -4,14 +4,10 @@ import 'package:flutter/material.dart';
 
 class DashboardHeader extends StatelessWidget {
   final bool isAr;
-  final String lang;
-  final ValueChanged<String> onLanguageChanged;
 
   const DashboardHeader({
     super.key,
     required this.isAr,
-    required this.lang,
-    required this.onLanguageChanged,
   });
 
   @override
@@ -35,7 +31,7 @@ class DashboardHeader extends StatelessWidget {
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
@@ -74,43 +70,6 @@ class DashboardHeader extends StatelessWidget {
                   isAr ? 'رفيقك الصحي والسريري الكبدي' : 'Metabolic & Liver Companion',
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: Colors.black38,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF8BCFAF).withValues(alpha: 0.38)),
-            ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => onLanguageChanged('en'),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: lang == 'en' ? const Color(0xFF2E7D32) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text('EN', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => onLanguageChanged('ar'),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: lang == 'ar' ? const Color(0xFF2E7D32) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text('العربية', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
                 ),
               ],
             ),

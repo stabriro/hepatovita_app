@@ -70,8 +70,8 @@ class AppLockService {
         return false;
       }
 
-      return _localAuth.authenticate(
-        localizedReason: 'Authenticate to open HepatoVita',
+        return _localAuth.authenticate(
+          localizedReason: 'Authenticate to open Itmain',
         options: const AuthenticationOptions(
           biometricOnly: true,
           stickyAuth: true,

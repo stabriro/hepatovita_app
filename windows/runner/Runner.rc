@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.hepatovita" "\0"
-            VALUE "FileDescription", "hepatovita_app" "\0"
+            VALUE "CompanyName", "com.itmain" "\0"
+            VALUE "FileDescription", "Itmain" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "hepatovita_app" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.hepatovita. All rights reserved." "\0"
-            VALUE "OriginalFilename", "hepatovita_app.exe" "\0"
-            VALUE "ProductName", "hepatovita_app" "\0"
+            VALUE "InternalName", "itmain_app" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.itmain. All rights reserved." "\0"
+            VALUE "OriginalFilename", "itmain_app.exe" "\0"
+            VALUE "ProductName", "Itmain" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

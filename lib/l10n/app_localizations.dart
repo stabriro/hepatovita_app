@@ -26,7 +26,7 @@ class AppLocalizations {
 
   static const Map<String, Map<String, String>> _values = {
     'en': {
-      'app_title': 'HepatoVita Companion',
+      'app_title': 'Itmain',
       'backup': 'Backup',
       'restore': 'Restore',
       'add_lab': 'Add Lab',
@@ -115,7 +115,7 @@ class AppLocalizations {
       'lab_image_parse_failed': 'Could not extract lab data automatically. You can still enter it manually.',
     },
     'ar': {
-      'app_title': 'مرافق هيباتوفيتا',
+      'app_title': 'اطمئن',
       'backup': 'نسخ احتياطي',
       'restore': 'استعادة',
       'add_lab': 'إضافة فحص',

@@ -31,8 +31,18 @@ class AppPersistenceCoordinator {
       walk30: snapshot.walk30,
       sun15: snapshot.sun15,
       lowFatDay: snapshot.lowFatDay,
+      updatedAt: snapshot.updatedAt,
     );
     mealAnalyzerViewModel.hydrateFromSnapshot(snapshot.analyzedResult);
+
+    final didReset = dashboardViewModel.resetDailyTrackersIfNeeded();
+    if (didReset) {
+      await saveUiState(
+        dashboardViewModel: dashboardViewModel,
+        mealAnalyzerViewModel: mealAnalyzerViewModel,
+        labs: snapshot.labs,
+      );
+    }
   }
 
   Future<void> saveUiState({

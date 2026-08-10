@@ -1,15 +1,16 @@
 import 'package:flutter/foundation.dart';
 
 class DashboardViewModel extends ChangeNotifier {
-  int _waterAmount = 1250;
+  int _waterAmount = 0;
   final int waterGoal = 3000;
-  int _greenTeaCount = 1;
+  int _greenTeaCount = 0;
   final int teaGoal = 3;
 
-  bool _chkVitD = true;
+  bool _chkVitD = false;
   bool _walk30 = false;
   bool _sun15 = false;
-  bool _lowFatDay = true;
+  bool _lowFatDay = false;
+  String _hydrationDayKey = _dayKey(DateTime.now());
 
   int get waterAmount => _waterAmount;
   int get greenTeaCount => _greenTeaCount;
@@ -38,6 +39,7 @@ class DashboardViewModel extends ChangeNotifier {
     required bool walk30,
     required bool sun15,
     required bool lowFatDay,
+    DateTime? updatedAt,
   }) {
     _waterAmount = waterAmount;
     _greenTeaCount = greenTeaCount;
@@ -45,7 +47,25 @@ class DashboardViewModel extends ChangeNotifier {
     _walk30 = walk30;
     _sun15 = sun15;
     _lowFatDay = lowFatDay;
+    _hydrationDayKey = _dayKey(updatedAt ?? DateTime.now());
     notifyListeners();
+  }
+
+  bool resetDailyTrackersIfNeeded({DateTime? now}) {
+    final todayKey = _dayKey(now ?? DateTime.now());
+    if (_hydrationDayKey == todayKey) {
+      return false;
+    }
+
+    _hydrationDayKey = todayKey;
+    _waterAmount = 0;
+    _greenTeaCount = 0;
+    _chkVitD = false;
+    _walk30 = false;
+    _sun15 = false;
+    _lowFatDay = false;
+    notifyListeners();
+    return true;
   }
 
   void addWater(int delta) {
@@ -69,5 +89,11 @@ class DashboardViewModel extends ChangeNotifier {
     if (sun15 != null) _sun15 = sun15;
     if (lowFatDay != null) _lowFatDay = lowFatDay;
     notifyListeners();
+  }
+
+  static String _dayKey(DateTime dateTime) {
+    final month = dateTime.month.toString().padLeft(2, '0');
+    final day = dateTime.day.toString().padLeft(2, '0');
+    return '${dateTime.year}-$month-$day';
   }
 }

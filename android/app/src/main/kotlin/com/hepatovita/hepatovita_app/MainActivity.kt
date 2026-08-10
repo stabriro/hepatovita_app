@@ -1,4 +1,4 @@
-package com.hepatovita.hepatovita_app
+package com.itmain.itmain_app
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
