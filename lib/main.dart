@@ -4,7 +4,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'app/di.dart';
 import 'data/app_database.dart';
+import 'features/dashboard/presentation/views/dashboard_shell_widgets.dart';
 import 'features/dashboard/presentation/views/overview_tab_view.dart';
+import 'features/dashboard/presentation/viewmodels/dashboard_view_model.dart';
+import 'features/education/presentation/views/education_tab_view.dart';
 import 'features/labs/domain/entities/lab_entity.dart';
 import 'features/labs/domain/entities/lab_history_entity.dart' as domain;
 import 'features/labs/domain/usecases/evaluate_lab_goal_usecase.dart';
@@ -13,6 +16,7 @@ import 'features/labs/presentation/presenters/lab_alert_presenter.dart';
 import 'features/labs/presentation/views/labs_tab_view.dart';
 import 'features/labs/presentation/viewmodels/labs_view_model.dart';
 import 'features/meal_analyzer/presentation/views/meal_analyzer_tab_view.dart';
+import 'features/meal_analyzer/presentation/viewmodels/meal_analyzer_view_model.dart';
 import 'l10n/app_localizations.dart';
 import 'services/local_notification_service.dart';
 
@@ -167,16 +171,6 @@ class MainDashboardScreen extends StatefulWidget {
 class _MainDashboardScreenState extends State<MainDashboardScreen> {
   int _currentTabIndex = 0;
 
-  int _waterAmount = 1250;
-  final int _waterGoal = 3000;
-  int _greenTeaCount = 1;
-  final int _teaGoal = 3;
-
-  bool _chkVitD = true;
-  bool _walk30 = false;
-  bool _sun15 = false;
-  bool _lowFatDay = true;
-
   List<LabEntry> _labs = [
     LabEntry(
       id: 'l1',
@@ -236,7 +230,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   ];
 
   final TextEditingController _mealSearchController = TextEditingController();
-  Map<String, dynamic>? _analyzedResult;
+  final DashboardViewModel _dashboardViewModel = DashboardViewModel();
+  final MealAnalyzerViewModel _mealAnalyzerViewModel = MealAnalyzerViewModel();
   Map<String, List<LabHistoryEntry>> _labHistoryByMetric = {};
   final Set<String> _shownCriticalAlertKeys = <String>{};
   final LabsViewModel _labsViewModel = AppDi.provideLabsViewModel();
@@ -325,13 +320,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
 
     setState(() {
-      _waterAmount = snapshot.waterAmount;
-      _greenTeaCount = snapshot.greenTeaCount;
-      _chkVitD = snapshot.chkVitD;
-      _walk30 = snapshot.walk30;
-      _sun15 = snapshot.sun15;
-      _lowFatDay = snapshot.lowFatDay;
-      _analyzedResult = snapshot.analyzedResult;
+      _dashboardViewModel.hydrateFromSnapshot(
+        waterAmount: snapshot.waterAmount,
+        greenTeaCount: snapshot.greenTeaCount,
+        chkVitD: snapshot.chkVitD,
+        walk30: snapshot.walk30,
+        sun15: snapshot.sun15,
+        lowFatDay: snapshot.lowFatDay,
+      );
+      _mealAnalyzerViewModel.hydrateFromSnapshot(snapshot.analyzedResult);
     });
   }
 
@@ -495,13 +492,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Future<void> _savePersistedState() async {
     final snapshot = AppSnapshot(
-      waterAmount: _waterAmount,
-      greenTeaCount: _greenTeaCount,
-      chkVitD: _chkVitD,
-      walk30: _walk30,
-      sun15: _sun15,
-      lowFatDay: _lowFatDay,
-      analyzedResult: _analyzedResult,
+      waterAmount: _dashboardViewModel.waterAmount,
+      greenTeaCount: _dashboardViewModel.greenTeaCount,
+      chkVitD: _dashboardViewModel.chkVitD,
+      walk30: _dashboardViewModel.walk30,
+      sun15: _dashboardViewModel.sun15,
+      lowFatDay: _dashboardViewModel.lowFatDay,
+      analyzedResult: _mealAnalyzerViewModel.analyzedResult,
       labs: _labs.map((e) => e.toMap()).toList(),
     );
     await AppDatabase.instance.saveState(snapshot);
@@ -822,29 +819,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     dateController.dispose();
   }
 
-  int _calculateScore() {
-    final waterPct = (_waterAmount / _waterGoal).clamp(0.0, 1.0);
-    int chkDone = 0;
-    if (_chkVitD) chkDone++;
-    if (_walk30) chkDone++;
-    if (_sun15) chkDone++;
-    if (_lowFatDay) chkDone++;
-    final chkPct = chkDone / 4.0;
-    final teaPct = (_greenTeaCount / _teaGoal).clamp(0.0, 1.0);
-
-    return ((waterPct * 40) + (chkPct * 40) + (teaPct * 20)).round();
-  }
-
   Future<void> _addWater(int delta) async {
     setState(() {
-      _waterAmount = (_waterAmount + delta).clamp(0, 5000);
+      _dashboardViewModel.addWater(delta);
     });
     await _savePersistedState();
   }
 
   Future<void> _changeTea(int delta) async {
     setState(() {
-      _greenTeaCount = (_greenTeaCount + delta).clamp(0, 10);
+      _dashboardViewModel.changeTea(delta);
     });
     await _savePersistedState();
   }
@@ -856,60 +840,22 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     bool? lowFatDay,
   }) async {
     setState(() {
-      if (chkVitD != null) _chkVitD = chkVitD;
-      if (walk30 != null) _walk30 = walk30;
-      if (sun15 != null) _sun15 = sun15;
-      if (lowFatDay != null) _lowFatDay = lowFatDay;
+      _dashboardViewModel.setChecklistValue(
+        chkVitD: chkVitD,
+        walk30: walk30,
+        sun15: sun15,
+        lowFatDay: lowFatDay,
+      );
     });
     await _savePersistedState();
   }
 
   Future<void> _analyzeMeal(String mealName) async {
-    if (mealName.trim().isEmpty) return;
-    final isAr = widget.lang == 'ar';
-    final textLower = mealName.toLowerCase();
-
-    bool hasRed = false;
-    bool hasGreen = false;
-
-    final redKeywords = ['fried', 'shawarma', 'burger', 'mayo', 'fries', 'crispy', 'مقلي', 'شاورما', 'برجر', 'مايونيز', 'ثومية'];
-    final greenKeywords = ['grilled', 'salmon', 'salad', 'steamed', 'quinoa', 'olive oil', 'مشوي', 'سلمون', 'سلطة', 'مسلوق', 'كينوا', 'زيت زيتون'];
-
-    for (var k in redKeywords) {
-      if (textLower.contains(k)) hasRed = true;
-    }
-    for (var k in greenKeywords) {
-      if (textLower.contains(k)) hasGreen = true;
-    }
-
-    String score = 'HIGH';
-    if (hasRed) {
-      score = 'LOW';
-    } else if (!hasGreen) {
-      score = 'MEDIUM';
-    }
-
-    List<String> tips = [];
-    if (textLower.contains('shawarma') || textLower.contains('شاورما')) {
-      tips.add(isAr ? 'اطلب الثومية أو المايونيز جانباً واستبدلهما بالليمون والطحينة الخفيفة.' : 'Request garlic paste / mayo on the side; substitute with lemon & tahini.');
-      tips.add(isAr ? 'اختر صحن دجاج مشوي بدلاً من الساندويتش المحشو بالبطاطس المقلية.' : 'Opt for grilled chicken platter over fries-stuffed wrap.');
-    } else if (textLower.contains('fried') || textLower.contains('مقلي')) {
-      tips.add(isAr ? 'اسأل عن إمكانية تحضير خيار مشوي أو مسلوق بدلاً من المقلي.' : 'Ask for a grilled or baked alternative.');
-      tips.add(isAr ? 'أزل الجلد المقرمش المقلي لتقليل 60% من الدهون المتحولة الضارة بالإجهاد الكبدي.' : 'Remove crispy fried skin to cut 60%+ trans-fats.');
-    } else {
-      tips.add(isAr ? 'وجبة ممتازة وصديقة للكبد! لا تتطلب تعديلات رئيسية.' : 'Excellent liver friendly option! Requires zero modifications.');
-    }
-
     setState(() {
-      _analyzedResult = {
-        'dish': mealName,
-        'score': score,
-        'protein': (textLower.contains('salmon') || textLower.contains('chicken') || textLower.contains('دجاج') || textLower.contains('سلمون'))
-            ? (isAr ? 'بروتين صافي ممتاز' : 'Lean Protein')
-            : (isAr ? 'بروتين متوسط' : 'Moderate Protein'),
-        'fat': score == 'LOW' ? (isAr ? 'دهون مشبعة مرتفعة' : 'High Saturated Trans-Fat') : (isAr ? 'دهون غير مشبعة منخفضة' : 'Low Saturated Fat'),
-        'tips': tips
-      };
+      _mealAnalyzerViewModel.analyzeMeal(
+        mealName: mealName,
+        isAr: widget.lang == 'ar',
+      );
     });
     await _savePersistedState();
   }
@@ -917,7 +863,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final isAr = widget.lang == 'ar';
-    final score = _calculateScore();
+    final score = _dashboardViewModel.score;
 
     return Scaffold(
       body: SafeArea(
@@ -963,288 +909,44 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Widget _buildModernHeader(bool isAr) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1B3B2B),
-        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3))],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)]),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
-                ),
-                child: const Icon(Icons.eco_rounded, color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Hepato',
-                        style: TextStyle(
-                          fontFamily: isAr ? 'Cairo' : 'Outfit',
-                          fontWeight: FontWeight.w900,
-                          fontSize: 20,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        'Vita',
-                        style: TextStyle(
-                          fontFamily: isAr ? 'Cairo' : 'Outfit',
-                          fontWeight: FontWeight.w900,
-                          fontSize: 20,
-                          color: const Color(0xFF81C784),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    isAr ? 'رفيقك الصحي والسريري الكبدي' : 'Metabolic & Liver Companion',
-                    style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: Colors.black38,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => widget.onLanguageChanged('en'),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: widget.lang == 'en' ? const Color(0xFF2E7D32) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text('EN', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => widget.onLanguageChanged('ar'),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: widget.lang == 'ar' ? const Color(0xFF2E7D32) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text('العربية', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
+    return DashboardHeader(
+      isAr: isAr,
+      lang: widget.lang,
+      onLanguageChanged: widget.onLanguageChanged,
     );
   }
 
   Widget _buildModernHeroScoreCard(int score, bool isAr) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1B3B2B), Color(0xFF0F261B)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1B3B2B).withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          )
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          isAr ? 'الملف الصحي والسريري للمريض' : 'Clinical Patient Profile',
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade900.withOpacity(0.4),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green.shade400.withOpacity(0.4)),
-                          ),
-                          child: Text(
-                            isAr ? 'مخصص' : 'Targeted',
-                            style: const TextStyle(color: Color(0xFF81C784), fontSize: 9, fontWeight: FontWeight.bold),
-                          ),
-                        )
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isAr ? 'أهداف علاجية مخصصة بناءً على نتائج تحاليلك' : 'Therapeutic protocol built for your biomarkers',
-                      style: const TextStyle(color: Colors.white70, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 56,
-                    height: 56,
-                    child: CircularProgressIndicator(
-                      value: score / 100.0,
-                      strokeWidth: 6,
-                      backgroundColor: Colors.white10,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        score >= 80 ? const Color(0xFF81C784) : (score >= 50 ? Colors.amber : Colors.orangeAccent),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '$score%',
-                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900),
-                  )
-                ],
-              )
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildModernPillarTag('ALT 58', isAr ? 'إنزيم الكبد' : 'ALT / AST', Colors.amber),
-                _buildModernPillarTag('16 ng/mL', isAr ? 'فيتامين د' : 'Vitamin D', Colors.purpleAccent),
-                _buildModernPillarTag('3.0L Water', isAr ? 'ترطيب Hgb' : 'Hgb Hydration', Colors.lightBlueAccent),
-                _buildModernPillarTag('5.0%', isAr ? 'التراكمي' : 'HbA1C', const Color(0xFF81C784)),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModernPillarTag(String val, String label, Color color) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withOpacity(0.4)),
-          ),
-          child: Text(val, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w500)),
-      ],
+    return DashboardHeroScoreCard(
+      score: score,
+      isAr: isAr,
     );
   }
 
   Widget _buildSegmentedTabBar(bool isAr) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _buildTabSegment(0, isAr ? 'الرئيسية والمتتبعات' : 'Dashboard', Icons.dashboard_rounded),
-            _buildTabSegment(1, isAr ? 'مُحلل الوجبات' : 'Meal Analyzer', Icons.restaurant_rounded),
-            _buildTabSegment(2, isAr ? 'الفحوصات' : 'Biomarkers', Icons.science_rounded),
-            _buildTabSegment(3, isAr ? 'الدليل الطبي' : 'Guidance', Icons.menu_book_rounded),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabSegment(int index, String title, IconData icon) {
-    final active = _currentTabIndex == index;
-    return GestureDetector(
-      onTap: () {
+    return DashboardSegmentedTabBar(
+      isAr: isAr,
+      currentTabIndex: _currentTabIndex,
+      onTabSelected: (index) {
         setState(() => _currentTabIndex = index);
         if (index == 2) {
           _maybeShowCriticalAlertPopup();
         }
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: active ? const Color(0xFF2E7D32) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: active ? Colors.white : const Color(0xFF64748B)),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: TextStyle(
-                color: active ? Colors.white : const Color(0xFF334155),
-                fontWeight: active ? FontWeight.bold : FontWeight.w600,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
   Widget _buildModernOverviewTab(bool isAr) {
     return OverviewTabView(
       isAr: isAr,
-      waterAmount: _waterAmount,
-      waterGoal: _waterGoal,
-      greenTeaCount: _greenTeaCount,
-      teaGoal: _teaGoal,
-      chkVitD: _chkVitD,
-      walk30: _walk30,
-      sun15: _sun15,
-      lowFatDay: _lowFatDay,
+      waterAmount: _dashboardViewModel.waterAmount,
+      waterGoal: _dashboardViewModel.waterGoal,
+      greenTeaCount: _dashboardViewModel.greenTeaCount,
+      teaGoal: _dashboardViewModel.teaGoal,
+      chkVitD: _dashboardViewModel.chkVitD,
+      walk30: _dashboardViewModel.walk30,
+      sun15: _dashboardViewModel.sun15,
+      lowFatDay: _dashboardViewModel.lowFatDay,
       onAddWater: _addWater,
       onChangeTea: _changeTea,
       onChkVitDChanged: (value) => _setChecklistValue(chkVitD: value),
@@ -1264,7 +966,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   MealAnalysisUiModel? _toMealAnalysisUiModel() {
-    final raw = _analyzedResult;
+    final raw = _mealAnalyzerViewModel.analyzedResult;
     if (raw == null) {
       return null;
     }
@@ -1329,64 +1031,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Widget _buildModernEducationTab(bool isAr) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                isAr ? 'أبرز الأغذية الفائقة لدعم صحة الكبد' : 'Top Liver Rescue Superfoods',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
-              ),
-              const SizedBox(height: 16),
-              _buildModernSuperfoodCard(Icons.coffee_rounded, isAr ? 'الشاي الأخضر (EGCG)' : 'Green Tea (EGCG)', isAr ? 'مضاد أكسدة قوي لحماية خلايا الكبد من الإجهاد' : 'Potent hepatocyte antioxidant protection'),
-              _buildModernSuperfoodCard(Icons.eco_rounded, isAr ? 'البروكلي والكرنب' : 'Broccoli & Kale', isAr ? 'يحفز إنزيمات تنظيف سموم الكبد الطبيعية' : 'Boosts hepatic detox enzymes'),
-              _buildModernSuperfoodCard(Icons.phishing_rounded, isAr ? 'السلمون البري (أوميغا-3)' : 'Wild Salmon (Omega-3)', isAr ? 'دهون صحية ممتازة لامتصاص فيتامين د3' : 'Healthy lipids for Vit D3 absorption'),
-              _buildModernSuperfoodCard(Icons.water_drop_rounded, isAr ? 'زيت الزيتون البكر' : 'Extra Virgin Olive Oil', isAr ? 'دهون غير مشبعة صديقة لإنزيمات ALT/AST' : 'Unsaturated fats gentle on ALT/AST'),
-            ],
-          ),
-        )
-      ],
-    );
-  }
-
-  Widget _buildModernSuperfoodCard(IconData icon, String title, String desc) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FBF9),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.green.shade100),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(14)),
-            child: Icon(icon, color: const Color(0xFF2E7D32), size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B3B2B))),
-                const SizedBox(height: 2),
-                Text(desc, style: const TextStyle(color: Colors.grey, fontSize: 11)),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
+    return EducationTabView(isAr: isAr);
   }
 }
 
