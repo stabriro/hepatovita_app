@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'app/di.dart';
@@ -41,7 +43,66 @@ class HepatoVitaApp extends StatefulWidget {
 }
 
 class _HepatoVitaAppState extends State<HepatoVitaApp> {
+  static const _kHasSeenSplash = 'has_seen_splash';
+
   Locale _locale = const Locale('en');
+  bool _isBootstrapping = true;
+  bool _showSplash = true;
+  Timer? _splashTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeLaunchFlow();
+  }
+
+  Future<void> _initializeLaunchFlow() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenSplash = prefs.getBool(_kHasSeenSplash) ?? false;
+
+    if (!mounted) {
+      return;
+    }
+
+    if (hasSeenSplash) {
+      setState(() {
+        _isBootstrapping = false;
+        _showSplash = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isBootstrapping = false;
+      _showSplash = true;
+    });
+
+    _splashTimer?.cancel();
+    _splashTimer = Timer(const Duration(seconds: 2), _handleSplashContinue);
+  }
+
+  Future<void> _handleSplashContinue() async {
+    if (!mounted || !_showSplash) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kHasSeenSplash, true);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _showSplash = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _splashTimer?.cancel();
+    super.dispose();
+  }
 
   void _toggleLanguage(String lang) {
     setState(() {
@@ -71,15 +132,121 @@ class _HepatoVitaAppState extends State<HepatoVitaApp> {
           primary: const Color(0xFF1B3B2B),
           secondary: const Color(0xFF2E7D32),
           surface: Colors.white,
-          background: const Color(0xFFF3F7F4),
         ),
         scaffoldBackgroundColor: const Color(0xFFF3F7F4),
       ),
       home: Directionality(
         textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
-        child: MainDashboardScreen(
-          lang: _locale.languageCode,
-          onLanguageChanged: _toggleLanguage,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 450),
+          child: _isBootstrapping
+              ? const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                )
+              : _showSplash
+              ? AppSplashScreen(
+                  key: const ValueKey('splash'),
+                  isAr: isAr,
+                  onContinue: _handleSplashContinue,
+                )
+              : MainDashboardScreen(
+                  key: const ValueKey('main_dashboard'),
+                  lang: _locale.languageCode,
+                  onLanguageChanged: _toggleLanguage,
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class AppSplashScreen extends StatelessWidget {
+  final bool isAr;
+  final VoidCallback onContinue;
+
+  const AppSplashScreen({
+    super.key,
+    required this.isAr,
+    required this.onContinue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0F2A20), Color(0xFF1B3B2B), Color(0xFF2E7D32)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Spacer(),
+                Container(
+                  width: 112,
+                  height: 112,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Icon(
+                    Icons.favorite_rounded,
+                    size: 52,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Text(
+                  'HepatoVita',
+                  textAlign: TextAlign.start,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontFamily: isAr ? 'Cairo' : 'Outfit',
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isAr
+                      ? 'مساعد ذكي لصحتك الكبدية والنمط اليومي'
+                      : 'Smart companion for liver health and daily routine',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
+                ),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: onContinue,
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  label: Text(isAr ? 'ابدأ الآن' : 'Get Started'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF1B3B2B),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -890,23 +1057,77 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
+  void _goToTab(int index) {
+    setState(() {
+      _currentTabIndex = index;
+    });
+    if (index == 2) {
+      _maybeShowCriticalAlertPopup();
+    }
+  }
+
+  Widget _buildHomeNavigationButtons(bool isAr) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD9E6DD)),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.center,
+        children: [
+          _HomeNavButton(
+            icon: Icons.home_rounded,
+            label: isAr ? 'الرئيسية' : 'Home',
+            onTap: () => _goToTab(0),
+          ),
+          _HomeNavButton(
+            icon: Icons.restaurant_menu_rounded,
+            label: isAr ? 'الوجبات' : 'Meals',
+            onTap: () => _goToTab(1),
+          ),
+          _HomeNavButton(
+            icon: Icons.science_rounded,
+            label: isAr ? 'التحاليل' : 'Labs',
+            onTap: () => _goToTab(2),
+          ),
+          _HomeNavButton(
+            icon: Icons.menu_book_rounded,
+            label: isAr ? 'التثقيف' : 'Education',
+            onTap: () => _goToTab(3),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildModernOverviewTab(bool isAr) {
-    return OverviewTabView(
-      isAr: isAr,
-      waterAmount: _dashboardViewModel.waterAmount,
-      waterGoal: _dashboardViewModel.waterGoal,
-      greenTeaCount: _dashboardViewModel.greenTeaCount,
-      teaGoal: _dashboardViewModel.teaGoal,
-      chkVitD: _dashboardViewModel.chkVitD,
-      walk30: _dashboardViewModel.walk30,
-      sun15: _dashboardViewModel.sun15,
-      lowFatDay: _dashboardViewModel.lowFatDay,
-      onAddWater: _addWater,
-      onChangeTea: _changeTea,
-      onChkVitDChanged: (value) => _setChecklistValue(chkVitD: value),
-      onWalk30Changed: (value) => _setChecklistValue(walk30: value),
-      onSun15Changed: (value) => _setChecklistValue(sun15: value),
-      onLowFatDayChanged: (value) => _setChecklistValue(lowFatDay: value),
+    return Column(
+      children: [
+        _buildHomeNavigationButtons(isAr),
+        OverviewTabView(
+          isAr: isAr,
+          waterAmount: _dashboardViewModel.waterAmount,
+          waterGoal: _dashboardViewModel.waterGoal,
+          greenTeaCount: _dashboardViewModel.greenTeaCount,
+          teaGoal: _dashboardViewModel.teaGoal,
+          chkVitD: _dashboardViewModel.chkVitD,
+          walk30: _dashboardViewModel.walk30,
+          sun15: _dashboardViewModel.sun15,
+          lowFatDay: _dashboardViewModel.lowFatDay,
+          onAddWater: _addWater,
+          onChangeTea: _changeTea,
+          onChkVitDChanged: (value) => _setChecklistValue(chkVitD: value),
+          onWalk30Changed: (value) => _setChecklistValue(walk30: value),
+          onSun15Changed: (value) => _setChecklistValue(sun15: value),
+          onLowFatDayChanged: (value) => _setChecklistValue(lowFatDay: value),
+        ),
+      ],
     );
   }
 
@@ -986,6 +1207,50 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Widget _buildModernEducationTab(bool isAr) {
     return EducationTabView(isAr: isAr);
+  }
+}
+
+class _HomeNavButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _HomeNavButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 74),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEEF5F0),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFCFE2D5)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: const Color(0xFF1B3B2B)),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF1B3B2B),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
