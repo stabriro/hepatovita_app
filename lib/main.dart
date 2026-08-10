@@ -3402,6 +3402,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Widget _buildModernOverviewTab(bool isAr) {
     return OverviewTabView(
       isAr: isAr,
+      hasLabs: _labs.isNotEmpty,
       waterAmount: _dashboardViewModel.waterAmount,
       waterGoal: _dashboardViewModel.waterGoal,
       greenTeaCount: _dashboardViewModel.greenTeaCount,

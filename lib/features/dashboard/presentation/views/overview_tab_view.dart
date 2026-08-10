@@ -4,6 +4,7 @@ import '../../../../l10n/app_localizations.dart';
 
 class OverviewTabView extends StatelessWidget {
   final bool isAr;
+  final bool hasLabs;
   final int waterAmount;
   final int waterGoal;
   final int greenTeaCount;
@@ -22,6 +23,7 @@ class OverviewTabView extends StatelessWidget {
   const OverviewTabView({
     super.key,
     required this.isAr,
+    required this.hasLabs,
     required this.waterAmount,
     required this.waterGoal,
     required this.greenTeaCount,
@@ -257,68 +259,70 @@ class OverviewTabView extends StatelessWidget {
           ),
               ),
             ),
-            SizedBox(height: sectionGap),
-            _SectionEntrance(
-              duration: const Duration(milliseconds: 520),
-              yOffset: compact ? 14 : 20,
-              child: Container(
-                padding: EdgeInsets.all(cardPadding),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFFE2EDE6)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x120F2E22),
-                blurRadius: 20,
-                offset: Offset(0, 8),
+            if (hasLabs) ...[
+              SizedBox(height: sectionGap),
+              _SectionEntrance(
+                duration: const Duration(milliseconds: 520),
+                yOffset: compact ? 14 : 20,
+                child: Container(
+                  padding: EdgeInsets.all(cardPadding),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: const Color(0xFFE2EDE6)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x120F2E22),
+                        blurRadius: 20,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.tr('overview_checklist_title'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
+                      ),
+                      const SizedBox(height: 12),
+                      _CheckTile(
+                        title: l10n.tr('overview_check_vitd_title'),
+                        subtitle: l10n.tr('overview_check_vitd_subtitle'),
+                        value: chkVitD,
+                        onChanged: onChkVitDChanged,
+                        tag: 'Vit D',
+                        tagColor: Colors.purple,
+                      ),
+                      _CheckTile(
+                        title: l10n.tr('overview_check_walk_title'),
+                        subtitle: l10n.tr('overview_check_walk_subtitle'),
+                        value: walk30,
+                        onChanged: onWalk30Changed,
+                        tag: 'ALT Care',
+                        tagColor: const Color(0xFF2E7D32),
+                      ),
+                      _CheckTile(
+                        title: l10n.tr('overview_check_sun_title'),
+                        subtitle: l10n.tr('overview_check_sun_subtitle'),
+                        value: sun15,
+                        onChanged: onSun15Changed,
+                        tag: 'Sun D3',
+                        tagColor: Colors.amber.shade800,
+                      ),
+                      _CheckTile(
+                        title: l10n.tr('overview_check_low_fat_title'),
+                        subtitle: l10n.tr('overview_check_low_fat_subtitle'),
+                        value: lowFatDay,
+                        onChanged: onLowFatDayChanged,
+                        tag: 'ALT/AST',
+                        tagColor: Colors.red.shade800,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.tr('overview_checklist_title'),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
-              ),
-              const SizedBox(height: 12),
-              _CheckTile(
-                title: l10n.tr('overview_check_vitd_title'),
-                subtitle: l10n.tr('overview_check_vitd_subtitle'),
-                value: chkVitD,
-                onChanged: onChkVitDChanged,
-                tag: 'Vit D',
-                tagColor: Colors.purple,
-              ),
-              _CheckTile(
-                title: l10n.tr('overview_check_walk_title'),
-                subtitle: l10n.tr('overview_check_walk_subtitle'),
-                value: walk30,
-                onChanged: onWalk30Changed,
-                tag: 'ALT Care',
-                tagColor: const Color(0xFF2E7D32),
-              ),
-              _CheckTile(
-                title: l10n.tr('overview_check_sun_title'),
-                subtitle: l10n.tr('overview_check_sun_subtitle'),
-                value: sun15,
-                onChanged: onSun15Changed,
-                tag: 'Sun D3',
-                tagColor: Colors.amber.shade800,
-              ),
-              _CheckTile(
-                title: l10n.tr('overview_check_low_fat_title'),
-                subtitle: l10n.tr('overview_check_low_fat_subtitle'),
-                value: lowFatDay,
-                onChanged: onLowFatDayChanged,
-                tag: 'ALT/AST',
-                tagColor: Colors.red.shade800,
-              ),
-            ],
-          ),
-              ),
-            ),
           ],
         );
       },
