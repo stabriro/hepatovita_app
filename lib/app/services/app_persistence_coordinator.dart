@@ -57,7 +57,7 @@ class AppPersistenceCoordinator {
       dialogTitle: dialogTitle,
       fileName: defaultFileName,
       type: FileType.custom,
-      allowedExtensions: ['db'],
+      allowedExtensions: ['hvbk'],
     );
 
     if (path == null) {
@@ -70,7 +70,7 @@ class AppPersistenceCoordinator {
   Future<bool> importDatabaseFromPicker() async {
     final file = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['db'],
+      allowedExtensions: ['hvbk', 'db'],
       allowMultiple: false,
     );
 

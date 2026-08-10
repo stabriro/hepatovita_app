@@ -22,8 +22,11 @@ import 'features/labs/presentation/views/labs_tab_view.dart';
 import 'features/labs/presentation/viewmodels/labs_view_model.dart';
 import 'features/meal_analyzer/presentation/views/meal_analyzer_tab_view.dart';
 import 'features/meal_analyzer/presentation/viewmodels/meal_analyzer_view_model.dart';
+import 'features/profile/presentation/views/profile_tab_view.dart';
 import 'l10n/app_localizations.dart';
 import 'services/local_notification_service.dart';
+import 'services/security/app_lock_service.dart';
+import 'services/security/app_settings_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,23 +45,33 @@ class HepatoVitaApp extends StatefulWidget {
   State<HepatoVitaApp> createState() => _HepatoVitaAppState();
 }
 
-class _HepatoVitaAppState extends State<HepatoVitaApp> {
+class _HepatoVitaAppState extends State<HepatoVitaApp>
+    with WidgetsBindingObserver {
   static const _kHasSeenSplash = 'has_seen_splash';
 
+  final AppLockService _appLockService = AppLockService.instance;
   Locale _locale = const Locale('en');
   bool _isBootstrapping = true;
   bool _showSplash = true;
+  bool _needsPinSetup = false;
+  bool _isLocked = false;
+  bool _biometricAvailable = false;
+  bool _biometricAllowed = false;
   Timer? _splashTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeLaunchFlow();
   }
 
   Future<void> _initializeLaunchFlow() async {
     final prefs = await SharedPreferences.getInstance();
     final hasSeenSplash = prefs.getBool(_kHasSeenSplash) ?? false;
+    final hasPin = await _appLockService.hasPin();
+    final biometricEnabled = await _appLockService.isBiometricEnabled();
+    final canUseBiometrics = await _appLockService.canUseBiometrics();
 
     if (!mounted) {
       return;
@@ -68,6 +81,10 @@ class _HepatoVitaAppState extends State<HepatoVitaApp> {
       setState(() {
         _isBootstrapping = false;
         _showSplash = false;
+        _needsPinSetup = !hasPin;
+        _isLocked = hasPin;
+        _biometricAvailable = canUseBiometrics;
+        _biometricAllowed = biometricEnabled && canUseBiometrics;
       });
       return;
     }
@@ -75,6 +92,10 @@ class _HepatoVitaAppState extends State<HepatoVitaApp> {
     setState(() {
       _isBootstrapping = false;
       _showSplash = true;
+      _needsPinSetup = !hasPin;
+      _isLocked = hasPin;
+      _biometricAvailable = canUseBiometrics;
+      _biometricAllowed = biometricEnabled && canUseBiometrics;
     });
 
     _splashTimer?.cancel();
@@ -98,9 +119,265 @@ class _HepatoVitaAppState extends State<HepatoVitaApp> {
     });
   }
 
+  Future<void> _completePinSetup({
+    required String pin,
+    required bool enableBiometric,
+  }) async {
+    await _appLockService.setPin(pin);
+    final recoveryCode = await _appLockService.rotateRecoveryCode();
+    await _appLockService.setBiometricEnabled(enableBiometric);
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _needsPinSetup = false;
+      _isLocked = false;
+      _biometricAllowed = enableBiometric;
+    });
+
+    await _showRecoveryCodeDialog(recoveryCode);
+  }
+
+  Future<bool> _unlockWithPin(String pin) async {
+    final isValid = await _appLockService.verifyPin(pin);
+    if (!mounted) {
+      return false;
+    }
+    if (!isValid) {
+      return false;
+    }
+
+    setState(() {
+      _isLocked = false;
+    });
+    return true;
+  }
+
+  Future<bool> _unlockWithBiometric() async {
+    final authenticated = await _appLockService.authenticateWithBiometrics();
+    if (!mounted || !authenticated) {
+      return false;
+    }
+
+    setState(() {
+      _isLocked = false;
+    });
+    return true;
+  }
+
+  Future<void> _recoverForgotPin() async {
+    final isAr = _locale.languageCode == 'ar';
+    final canUseBiometrics = await _appLockService.canUseBiometrics();
+    final hasRecoveryCode = await _appLockService.hasRecoveryCode();
+    if (!mounted) {
+      return;
+    }
+
+    if (!canUseBiometrics) {
+      if (hasRecoveryCode) {
+        await _recoverWithRecoveryCode();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isAr
+                  ? 'لا يمكن استعادة PIN بدون بصمة أو رمز استعادة.'
+                  : 'PIN recovery requires biometrics or a recovery code.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    final verified = await _appLockService.authenticateWithBiometrics();
+    if (!mounted) {
+      return;
+    }
+
+    if (!verified) {
+      if (hasRecoveryCode) {
+        await _recoverWithRecoveryCode();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isAr
+                  ? 'فشل التحقق بالبصمة ولا يوجد رمز استعادة متاح.'
+                  : 'Biometric verification failed and no recovery code is available.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _isLocked = false;
+      _needsPinSetup = true;
+    });
+  }
+
+  Future<void> _recoverWithRecoveryCode() async {
+    final isAr = _locale.languageCode == 'ar';
+    final codeController = TextEditingController();
+    String? localError;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setInnerState) {
+            return AlertDialog(
+              title: Text(isAr ? 'استعادة باستخدام الرمز' : 'Recover With Code'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isAr
+                        ? 'أدخل رمز الاستعادة المكون من 3 مجموعات (مثال: 1234-5678-9012).'
+                        : 'Enter your 3-part recovery code (example: 1234-5678-9012).',
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: codeController,
+                    decoration: InputDecoration(
+                      labelText: isAr ? 'رمز الاستعادة' : 'Recovery Code',
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                  ),
+                  if (localError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      localError!,
+                      style: const TextStyle(color: Color(0xFFB91C1C)),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(isAr ? 'إلغاء' : 'Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final candidate = codeController.text.trim().toUpperCase();
+                    final ok = await _appLockService.verifyRecoveryCode(candidate);
+                    if (!ok) {
+                      setInnerState(() {
+                        localError = isAr ? 'رمز الاستعادة غير صحيح' : 'Invalid recovery code';
+                      });
+                      return;
+                    }
+                    if (!dialogContext.mounted) {
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(true);
+                  },
+                  child: Text(isAr ? 'تحقق' : 'Verify'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    codeController.dispose();
+
+    if (confirmed == true && mounted) {
+      setState(() {
+        _isLocked = false;
+        _needsPinSetup = true;
+      });
+    }
+  }
+
+  Future<void> _showRecoveryCodeDialog(String code) async {
+    final isAr = _locale.languageCode == 'ar';
+    if (!mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(isAr ? 'احفظ رمز الاستعادة' : 'Save Recovery Code'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isAr
+                    ? 'استخدم هذا الرمز لإعادة تعيين PIN إذا نسيته.'
+                    : 'Use this code to reset PIN if you forget it.',
+              ),
+              const SizedBox(height: 10),
+              SelectableText(
+                code,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                isAr
+                    ? 'احتفظ به في مكان آمن. سيتم تغييره عند تغيير PIN.'
+                    : 'Store it safely. It will rotate when PIN changes.',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(isAr ? 'تم' : 'Done'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _armLock() async {
+    final hasPin = await _appLockService.hasPin();
+    final biometricEnabled = await _appLockService.isBiometricEnabled();
+    final canUseBiometric = await _appLockService.canUseBiometrics();
+    if (!mounted || !hasPin) {
+      return;
+    }
+
+    setState(() {
+      _isLocked = true;
+      _biometricAllowed = biometricEnabled && canUseBiometric;
+    });
+  }
+
+  Future<void> _lockNow() async {
+    await _armLock();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _armLock();
+    }
+  }
+
   @override
   void dispose() {
     _splashTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -149,11 +426,316 @@ class _HepatoVitaAppState extends State<HepatoVitaApp> {
                   isAr: isAr,
                   onContinue: _handleSplashContinue,
                 )
+              : _needsPinSetup
+              ? SecurityPinSetupScreen(
+                  key: const ValueKey('pin_setup'),
+                  isAr: isAr,
+                  canUseBiometric: _biometricAvailable,
+                  onPinCreated: _completePinSetup,
+                )
+              : _isLocked
+              ? SecurityUnlockScreen(
+                  key: const ValueKey('pin_unlock'),
+                  isAr: isAr,
+                  enableBiometric: _biometricAllowed,
+                  onUnlockWithPin: _unlockWithPin,
+                  onUnlockWithBiometric: _unlockWithBiometric,
+                  onForgotPin: _recoverForgotPin,
+                )
               : MainDashboardScreen(
                   key: const ValueKey('main_dashboard'),
                   lang: _locale.languageCode,
                   onLanguageChanged: _toggleLanguage,
+                  onLockRequested: _lockNow,
                 ),
+        ),
+      ),
+    );
+  }
+}
+
+class SecurityPinSetupScreen extends StatefulWidget {
+  final bool isAr;
+  final bool canUseBiometric;
+  final Future<void> Function({required String pin, required bool enableBiometric})
+      onPinCreated;
+
+  const SecurityPinSetupScreen({
+    super.key,
+    required this.isAr,
+    required this.canUseBiometric,
+    required this.onPinCreated,
+  });
+
+  @override
+  State<SecurityPinSetupScreen> createState() => _SecurityPinSetupScreenState();
+}
+
+class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
+  final TextEditingController _pinController = TextEditingController();
+  final TextEditingController _confirmPinController = TextEditingController();
+  bool _enableBiometric = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    _confirmPinController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final pin = _pinController.text.trim();
+    final confirmPin = _confirmPinController.text.trim();
+
+    if (pin.length < 4 || int.tryParse(pin) == null) {
+      setState(() {
+        _error = widget.isAr
+            ? 'أدخل رقم PIN مكونا من 4 أرقام على الأقل'
+            : 'Enter a PIN with at least 4 digits';
+      });
+      return;
+    }
+    if (pin != confirmPin) {
+      setState(() {
+        _error = widget.isAr ? 'PIN غير متطابق' : 'PIN confirmation does not match';
+      });
+      return;
+    }
+
+    setState(() {
+      _error = null;
+    });
+
+    await widget.onPinCreated(
+      pin: pin,
+      enableBiometric: widget.canUseBiometric && _enableBiometric,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        widget.isAr ? 'تفعيل حماية التطبيق' : 'Enable App Security',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.isAr
+                            ? 'أنشئ PIN لحماية بياناتك الطبية محليا.'
+                            : 'Create a PIN to protect your health data locally.',
+                        style: const TextStyle(color: Color(0xFF64748B)),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _pinController,
+                        obscureText: true,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: widget.isAr ? 'PIN جديد' : 'New PIN',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _confirmPinController,
+                        obscureText: true,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: widget.isAr ? 'تأكيد PIN' : 'Confirm PIN',
+                        ),
+                      ),
+                      if (widget.canUseBiometric) ...[
+                        const SizedBox(height: 12),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(widget.isAr
+                              ? 'تفعيل البصمة/الوجه'
+                              : 'Enable biometric unlock'),
+                          value: _enableBiometric,
+                          onChanged: (value) {
+                            setState(() {
+                              _enableBiometric = value;
+                            });
+                          },
+                        ),
+                      ],
+                      if (_error != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          _error!,
+                          style: const TextStyle(color: Color(0xFFB91C1C)),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: _submit,
+                        child: Text(widget.isAr ? 'حفظ ومتابعة' : 'Save & Continue'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SecurityUnlockScreen extends StatefulWidget {
+  final bool isAr;
+  final bool enableBiometric;
+  final Future<bool> Function(String pin) onUnlockWithPin;
+  final Future<bool> Function() onUnlockWithBiometric;
+  final Future<void> Function() onForgotPin;
+
+  const SecurityUnlockScreen({
+    super.key,
+    required this.isAr,
+    required this.enableBiometric,
+    required this.onUnlockWithPin,
+    required this.onUnlockWithBiometric,
+    required this.onForgotPin,
+  });
+
+  @override
+  State<SecurityUnlockScreen> createState() => _SecurityUnlockScreenState();
+}
+
+class _SecurityUnlockScreenState extends State<SecurityUnlockScreen> {
+  final TextEditingController _pinController = TextEditingController();
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.enableBiometric) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _unlockWithBiometric();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _unlockWithPin() async {
+    final pin = _pinController.text.trim();
+    final ok = await widget.onUnlockWithPin(pin);
+    if (!ok && mounted) {
+      setState(() {
+        _error = widget.isAr ? 'PIN غير صحيح' : 'Invalid PIN';
+      });
+    }
+  }
+
+  Future<void> _unlockWithBiometric() async {
+    final ok = await widget.onUnlockWithBiometric();
+    if (!ok && mounted) {
+      setState(() {
+        _error = widget.isAr
+            ? 'فشل التحقق بالبصمة، استخدم PIN'
+            : 'Biometric auth failed, please use PIN.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        widget.isAr ? 'افتح التطبيق' : 'Unlock App',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.isAr
+                            ? 'أدخل PIN للوصول إلى بياناتك الصحية.'
+                            : 'Enter your PIN to access your health data.',
+                        style: const TextStyle(color: Color(0xFF64748B)),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _pinController,
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: widget.isAr ? 'PIN' : 'PIN',
+                        ),
+                        onSubmitted: (_) => _unlockWithPin(),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          _error!,
+                          style: const TextStyle(color: Color(0xFFB91C1C)),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: _unlockWithPin,
+                        child: Text(widget.isAr ? 'دخول' : 'Unlock'),
+                      ),
+                      const SizedBox(height: 6),
+                      TextButton(
+                        onPressed: widget.onForgotPin,
+                        child: Text(
+                          widget.isAr ? 'نسيت PIN؟' : 'Forgot PIN?',
+                        ),
+                      ),
+                      if (widget.enableBiometric) ...[
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: _unlockWithBiometric,
+                          icon: const Icon(Icons.fingerprint_rounded),
+                          label: Text(widget.isAr
+                              ? 'استخدام البصمة/الوجه'
+                              : 'Use biometrics'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -331,11 +913,13 @@ class LabEntry {
 class MainDashboardScreen extends StatefulWidget {
   final String lang;
   final ValueChanged<String> onLanguageChanged;
+  final VoidCallback onLockRequested;
 
   const MainDashboardScreen({
     super.key,
     required this.lang,
     required this.onLanguageChanged,
+    required this.onLockRequested,
   });
 
   @override
@@ -344,6 +928,9 @@ class MainDashboardScreen extends StatefulWidget {
 
 class _MainDashboardScreenState extends State<MainDashboardScreen> {
   int _currentTabIndex = 0;
+  bool _notificationsEnabled = true;
+  bool _biometricEnabled = false;
+  bool _canUseBiometric = false;
 
   List<LabEntry> _labs = [
     LabEntry(
@@ -411,6 +998,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final LabsViewModel _labsViewModel = AppDi.provideLabsViewModel();
   final AppPersistenceCoordinator _persistenceCoordinator =
       AppDi.provideAppPersistenceCoordinator();
+  final AppLockService _appLockService = AppLockService.instance;
+  final AppSettingsService _appSettingsService = AppSettingsService.instance;
   late final DashboardActionsCoordinator _dashboardActionsCoordinator =
       AppDi.provideDashboardActionsCoordinator(
         dashboardViewModel: _dashboardViewModel,
@@ -429,8 +1018,26 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     _mealAnalyzerViewModel.addListener(_onScreenStateChanged);
     _labsViewModel.addListener(_onLabsViewModelChanged);
     _loadPersistedState();
+    _loadProfileSettings();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _labsViewModel.load();
+    });
+  }
+
+  Future<void> _loadProfileSettings() async {
+    final notificationsEnabled =
+        await _appSettingsService.isNotificationsEnabled();
+    final biometricEnabled = await _appLockService.isBiometricEnabled();
+    final canUseBiometric = await _appLockService.canUseBiometrics();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _notificationsEnabled = notificationsEnabled;
+      _biometricEnabled = biometricEnabled;
+      _canUseBiometric = canUseBiometric;
     });
   }
 
@@ -546,12 +1153,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
     final popupText = l10n.tr('high_alert_popup', args: {'metric': nextAlert.metric});
 
-    final notificationId = alertKey.hashCode.abs() % 2147483647;
-    LocalNotificationService.instance.showCriticalAlert(
-      id: notificationId,
-      title: l10n.tr('high_alert_title'),
-      body: popupText,
-    );
+    if (_notificationsEnabled) {
+      final notificationId = alertKey.hashCode.abs() % 2147483647;
+      LocalNotificationService.instance.showCriticalAlert(
+        id: notificationId,
+        title: l10n.tr('high_alert_title'),
+        body: popupText,
+      );
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -585,7 +1194,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     try {
       final savedPath = await _persistenceCoordinator.exportDatabase(
         defaultFileName:
-            'hepatovita_backup_${DateTime.now().toIso8601String().split('T').first}.db',
+            'hepatovita_backup_${DateTime.now().toIso8601String().split('T').first}.hvbk',
         dialogTitle: l10n.tr('save_sqlite_backup'),
       );
       if (!mounted) return;
@@ -981,6 +1590,190 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
+  Future<void> _updateNotifications(bool enabled) async {
+    await _appSettingsService.setNotificationsEnabled(enabled);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _notificationsEnabled = enabled;
+    });
+  }
+
+  Future<void> _updateBiometric(bool enabled) async {
+    await _appLockService.setBiometricEnabled(enabled);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _biometricEnabled = enabled;
+    });
+  }
+
+  Future<void> _showChangePinDialog() async {
+    final isAr = widget.lang == 'ar';
+    final oldPinController = TextEditingController();
+    final newPinController = TextEditingController();
+    final confirmPinController = TextEditingController();
+    String? localError;
+
+    final nextRecoveryCode = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setInnerState) {
+            return AlertDialog(
+              title: Text(isAr ? 'تغيير PIN' : 'Change PIN'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: oldPinController,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: isAr ? 'PIN الحالي' : 'Current PIN',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: newPinController,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: isAr ? 'PIN جديد' : 'New PIN',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: confirmPinController,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: isAr ? 'تأكيد PIN' : 'Confirm PIN',
+                      ),
+                    ),
+                    if (localError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        localError!,
+                        style: const TextStyle(color: Color(0xFFB91C1C)),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(isAr ? 'إلغاء' : 'Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final oldPin = oldPinController.text.trim();
+                    final newPin = newPinController.text.trim();
+                    final confirmPin = confirmPinController.text.trim();
+
+                    final validOldPin = await _appLockService.verifyPin(oldPin);
+                    if (!validOldPin) {
+                      setInnerState(() {
+                        localError = isAr ? 'PIN الحالي غير صحيح' : 'Current PIN is incorrect';
+                      });
+                      return;
+                    }
+
+                    if (newPin.length < 4 || int.tryParse(newPin) == null) {
+                      setInnerState(() {
+                        localError = isAr
+                            ? 'PIN الجديد يجب أن يكون 4 أرقام على الأقل'
+                            : 'New PIN must be at least 4 digits';
+                      });
+                      return;
+                    }
+
+                    if (newPin != confirmPin) {
+                      setInnerState(() {
+                        localError = isAr ? 'PIN غير متطابق' : 'PIN confirmation does not match';
+                      });
+                      return;
+                    }
+
+                    await _appLockService.setPin(newPin);
+                    final rotatedRecoveryCode =
+                        await _appLockService.rotateRecoveryCode();
+                    if (!dialogContext.mounted) {
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(rotatedRecoveryCode);
+                  },
+                  child: Text(isAr ? 'حفظ' : 'Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    oldPinController.dispose();
+    newPinController.dispose();
+    confirmPinController.dispose();
+
+    if (nextRecoveryCode != null) {
+      if (!mounted) {
+        return;
+      }
+      await _showRecoveryCodeDialogFromProfile(nextRecoveryCode);
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isAr ? 'تم تحديث PIN بنجاح' : 'PIN updated successfully'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showRecoveryCodeDialogFromProfile(String code) async {
+    final isAr = widget.lang == 'ar';
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(isAr ? 'رمز الاستعادة الجديد' : 'New Recovery Code'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isAr
+                    ? 'احفظ الرمز التالي لاستعادة PIN عند نسيانه:'
+                    : 'Save this code to recover your PIN if forgotten:',
+              ),
+              const SizedBox(height: 10),
+              SelectableText(
+                code,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(isAr ? 'تم' : 'Done'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAr = widget.lang == 'ar';
@@ -1029,6 +1822,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             icon: const Icon(Icons.menu_book_rounded),
             label: isAr ? 'التثقيف' : 'Education',
           ),
+          NavigationDestination(
+            icon: const Icon(Icons.person_rounded),
+            label: isAr ? 'الملف' : 'Profile',
+          ),
         ],
       ),
     );
@@ -1044,6 +1841,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         return _buildModernLabsTab(isAr);
       case 3:
         return _buildModernEducationTab(isAr);
+      case 4:
+        return _buildModernProfileTab(isAr);
       default:
         return _buildModernOverviewTab(isAr);
     }
@@ -1169,6 +1968,21 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Widget _buildModernEducationTab(bool isAr) {
     return EducationTabView(isAr: isAr);
+  }
+
+  Widget _buildModernProfileTab(bool isAr) {
+    return ProfileTabView(
+      isAr: isAr,
+      notificationsEnabled: _notificationsEnabled,
+      biometricEnabled: _biometricEnabled,
+      canUseBiometric: _canUseBiometric,
+      onNotificationsChanged: _updateNotifications,
+      onBiometricChanged: _updateBiometric,
+      onChangePin: _showChangePinDialog,
+      onExportBackup: _exportBackupFile,
+      onRestoreBackup: _restoreBackupFile,
+      onLockNow: widget.onLockRequested,
+    );
   }
 }
 

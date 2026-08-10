@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+
+import '../services/security/security_crypto_service.dart';
 
 class AppSnapshot {
   final int waterAmount;
@@ -115,6 +118,7 @@ class AppDatabase {
   static const _labHistoryTable = 'lab_history';
 
   Database? _db;
+  final SecurityCryptoService _crypto = SecurityCryptoService.instance;
 
   Future<String> get databasePath async {
     final dbDir = await getDatabasesPath();
@@ -193,9 +197,9 @@ class AppDatabase {
 
   Future<String> exportDatabaseTo(String destinationPath) async {
     final sourcePath = await databasePath;
-    final resolvedDestination = destinationPath.toLowerCase().endsWith('.db')
+    final resolvedDestination = destinationPath.toLowerCase().endsWith('.hvbk')
         ? destinationPath
-        : '$destinationPath.db';
+      : '$destinationPath.hvbk';
 
     await close();
 
@@ -205,7 +209,15 @@ class AppDatabase {
       throw Exception('Database file not found.');
     }
 
-    await source.copy(resolvedDestination);
+    final rawBytes = await source.readAsBytes();
+    final encryptedBytes = await _crypto.encryptBytes(
+      Uint8List.fromList(rawBytes),
+    );
+    await File(resolvedDestination).writeAsBytes(
+      encryptedBytes,
+      flush: true,
+    );
+
     await database;
     return resolvedDestination;
   }
@@ -225,15 +237,29 @@ class AppDatabase {
       await target.delete();
     }
 
-    await backup.copy(targetPath);
+    final backupBytes = Uint8List.fromList(await backup.readAsBytes());
+    Uint8List rawDatabaseBytes;
+    try {
+      rawDatabaseBytes = await _crypto.decryptBytes(backupBytes);
+    } on FormatException {
+      // Backward compatibility with older plain .db backups.
+      rawDatabaseBytes = backupBytes;
+    }
+
+    await target.writeAsBytes(rawDatabaseBytes, flush: true);
     await database;
   }
 
   Future<void> saveState(AppSnapshot snapshot) async {
     final db = await database;
+    final map = snapshot.toDbMap();
+    map['analyzed_result'] =
+        await _encryptNullableText(map['analyzed_result'] as String?);
+    map['labs_json'] = await _crypto.encryptText(map['labs_json'] as String);
+
     await db.insert(
       _stateTable,
-      snapshot.toDbMap(),
+      map,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
@@ -251,12 +277,23 @@ class AppDatabase {
       return null;
     }
 
-    return AppSnapshot.fromDbMap(rows.first);
+    final row = Map<String, dynamic>.from(rows.first);
+    row['analyzed_result'] =
+        await _decryptNullableText(row['analyzed_result'] as String?);
+    row['labs_json'] = await _decryptTextSafely(row['labs_json'] as String);
+
+    return AppSnapshot.fromDbMap(row);
   }
 
   Future<void> addLabHistoryEntry(LabHistoryEntry entry) async {
     final db = await database;
-    await db.insert(_labHistoryTable, entry.toDbMap());
+    final map = entry.toDbMap();
+    map['metric'] = await _crypto.encryptText(map['metric'] as String);
+    map['unit'] = await _crypto.encryptText(map['unit'] as String);
+    map['status'] = await _crypto.encryptText(map['status'] as String);
+    map['date'] = await _crypto.encryptText(map['date'] as String);
+    map['created_at'] = await _crypto.encryptText(map['created_at'] as String);
+    await db.insert(_labHistoryTable, map);
   }
 
   Future<Map<String, List<LabHistoryEntry>>> getAllLabHistoryGrouped() async {
@@ -268,7 +305,15 @@ class AppDatabase {
 
     final grouped = <String, List<LabHistoryEntry>>{};
     for (final row in rows) {
-      final entry = LabHistoryEntry.fromDbMap(row);
+      final decrypted = Map<String, dynamic>.from(row);
+      decrypted['metric'] = await _decryptTextSafely(row['metric'] as String);
+      decrypted['unit'] = await _decryptTextSafely(row['unit'] as String);
+      decrypted['status'] = await _decryptTextSafely(row['status'] as String);
+      decrypted['date'] = await _decryptTextSafely(row['date'] as String);
+      decrypted['created_at'] =
+          await _decryptTextSafely(row['created_at'] as String);
+
+      final entry = LabHistoryEntry.fromDbMap(decrypted);
       grouped.putIfAbsent(entry.metric, () => <LabHistoryEntry>[]).add(entry);
     }
     return grouped;
@@ -276,10 +321,51 @@ class AppDatabase {
 
   Future<void> deleteLabHistoryByMetric(String metric) async {
     final db = await database;
-    await db.delete(
+    final rows = await db.query(
       _labHistoryTable,
-      where: 'metric = ?',
-      whereArgs: [metric],
+      columns: ['id', 'metric'],
     );
+
+    final idsToDelete = <int>[];
+    for (final row in rows) {
+      final decryptedMetric = await _decryptTextSafely(row['metric'] as String);
+      if (decryptedMetric == metric) {
+        final id = (row['id'] as num?)?.toInt();
+        if (id != null) {
+          idsToDelete.add(id);
+        }
+      }
+    }
+
+    for (final id in idsToDelete) {
+      await db.delete(
+        _labHistoryTable,
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    }
+  }
+
+  Future<String?> _encryptNullableText(String? value) async {
+    if (value == null) {
+      return null;
+    }
+    return _crypto.encryptText(value);
+  }
+
+  Future<String?> _decryptNullableText(String? value) async {
+    if (value == null) {
+      return null;
+    }
+    return _decryptTextSafely(value);
+  }
+
+  Future<String> _decryptTextSafely(String value) async {
+    try {
+      return await _crypto.decryptText(value);
+    } catch (_) {
+      // Keep backward compatibility for legacy plain or invalid values.
+      return value;
+    }
   }
 }
