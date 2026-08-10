@@ -22,6 +22,8 @@ class MainActivity: FlutterFragmentActivity() {
 						val prefs = getSharedPreferences("itmain_widget_prefs", Context.MODE_PRIVATE)
 						val editor = prefs.edit()
 						val hydrationPercent = ((args["itmain_hydration_percent"] as? Number)?.toInt()) ?: 0
+						val scoreValue = ((args["itmain_score_value"] as? Number)?.toInt()) ?: 0
+						val todayKey = args["itmain_today_key"] as? String
 						val waterAmount = ((args["itmain_water_amount"] as? Number)?.toInt()) ?: 0
 						val waterGoal = ((args["itmain_water_goal"] as? Number)?.toInt()) ?: 3000
 						val greenTeaCount = ((args["itmain_green_tea_count"] as? Number)?.toInt()) ?: 0
@@ -44,6 +46,12 @@ class MainActivity: FlutterFragmentActivity() {
 						editor.putBoolean("itmain_low_fat_day", lowFatDay)
 						editor.putString("itmain_lang", args["itmain_lang"] as? String ?: "en")
 						editor.apply()
+
+						BaseItmainHomeWidgetProvider.updateStreakOnSync(
+							context = applicationContext,
+							score = scoreValue,
+							todayKey = todayKey,
+						)
 
 						BaseItmainHomeWidgetProvider.refreshAllWidgetInstances(applicationContext)
 						result.success(true)

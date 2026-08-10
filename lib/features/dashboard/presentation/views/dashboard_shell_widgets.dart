@@ -41,7 +41,7 @@ class DashboardHeader extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        'Hepato',
+                        isAr ? 'اطمئن' : 'It',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontFamily: isAr ? 'Cairo' : 'Outfit',
@@ -51,19 +51,21 @@ class DashboardHeader extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 3),
-                    Flexible(
-                      child: Text(
-                        'Vita',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: isAr ? 'Cairo' : 'Outfit',
-                          fontWeight: FontWeight.w900,
-                          fontSize: 20,
-                          color: const Color(0xFF81C784),
+                    if (!isAr) ...[
+                      const SizedBox(width: 3),
+                      Flexible(
+                        child: Text(
+                          'main',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: isAr ? 'Cairo' : 'Outfit',
+                            fontWeight: FontWeight.w900,
+                            fontSize: 20,
+                            color: const Color(0xFF81C784),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
                 Text(

@@ -8,6 +8,8 @@ import android.content.Intent
 import android.graphics.Color
 import android.widget.RemoteViews
 import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
   protected abstract val layoutId: Int
@@ -60,6 +62,8 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
       val hydrationPercent = ((waterAmount.toDouble() / waterGoal.toDouble()) * 100)
         .toInt()
         .coerceIn(0, 100)
+      val streakCount = prefs.getInt("itmain_streak_count", 0)
+      val phase = prefs.getInt("itmain_widget_phase", 0)
       val score = computeScore(
         waterAmount = waterAmount,
         waterGoal = waterGoal,
@@ -75,9 +79,11 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
       val quickWater = if (lang == "ar") "+250 ماء" else "+250 mL"
       val quickTask = if (lang == "ar") "إنجاز مهمة" else "Done Task"
       val scoreLabel = if (lang == "ar") "الالتزام: $score%" else "Score: $score%"
+      val streakLabel = if (lang == "ar") "سلسلة $streakCount" else "Streak ${streakCount}d"
 
       val highlightColor = resolveHighlightColor(hydrationPercent, checklistDone)
-      val status = resolveStatus(lang, hydrationPercent, checklistDone, score)
+      val status = resolveStatus(lang, hydrationPercent, checklistDone, score, phase)
+      val palette = resolvePalette()
 
       appWidgetIds.forEach { widgetId ->
         val launchIntent = Intent(context, MainActivity::class.java).apply {
@@ -117,11 +123,19 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
           setTextViewText(R.id.text_tasks_label, tasksLabel)
           setTextViewText(R.id.text_water_value, "$waterAmount/$waterGoal mL")
           setTextViewText(R.id.text_tasks_value, "$checklistDone/4")
+          setTextViewText(R.id.text_streak_badge, streakLabel)
           setTextViewText(R.id.text_status_chip, status.chip)
           setTextViewText(R.id.text_motivation, status.message)
           setTextViewText(R.id.btn_add_water, quickWater)
           setTextViewText(R.id.btn_mark_task, quickTask)
           setInt(R.id.highlight_bar, "setBackgroundColor", highlightColor)
+          setInt(R.id.widget_root, "setBackgroundColor", palette.rootBg)
+          setInt(R.id.btn_add_water, "setBackgroundColor", palette.waterBtnBg)
+          setInt(R.id.btn_mark_task, "setBackgroundColor", palette.taskBtnBg)
+          setTextColor(R.id.btn_add_water, palette.waterBtnFg)
+          setTextColor(R.id.btn_mark_task, palette.taskBtnFg)
+          setInt(R.id.text_streak_badge, "setBackgroundColor", palette.streakBg)
+          setTextColor(R.id.text_streak_badge, palette.streakFg)
           setInt(R.id.text_status_chip, "setBackgroundColor", status.chipBg)
           setTextColor(R.id.text_status_chip, status.chipFg)
           setTextColor(R.id.text_motivation, status.messageColor)
@@ -176,11 +190,22 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
       val tasksValueColor: Int,
     )
 
+    private data class WidgetPalette(
+      val rootBg: Int,
+      val waterBtnBg: Int,
+      val waterBtnFg: Int,
+      val taskBtnBg: Int,
+      val taskBtnFg: Int,
+      val streakBg: Int,
+      val streakFg: Int,
+    )
+
     private fun resolveStatus(
       lang: String,
       hydrationPercent: Int,
       checklistDone: Int,
       score: Int,
+      phase: Int,
     ): WidgetStatusUi {
       val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
 
@@ -233,10 +258,15 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
       }
 
       if (score >= 80) {
+        val message = if (phase % 2 == 0) {
+          if (lang == "ar") "التزامك اليوم رائع استمر" else "Strong streak today keep going"
+        } else {
+          if (lang == "ar") "أداء ممتاز حافظ على الإيقاع" else "Excellent pace keep momentum"
+        }
         return if (lang == "ar") {
           WidgetStatusUi(
             chip = "ممتاز",
-            message = "التزامك اليوم رائع استمر",
+            message = message,
             chipBg = Color.parseColor("#DCFCE7"),
             chipFg = Color.parseColor("#166534"),
             messageColor = Color.parseColor("#166534"),
@@ -246,7 +276,7 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
         } else {
           WidgetStatusUi(
             chip = "Great",
-            message = "Strong streak today keep going",
+            message = message,
             chipBg = Color.parseColor("#DCFCE7"),
             chipFg = Color.parseColor("#166534"),
             messageColor = Color.parseColor("#166534"),
@@ -256,10 +286,18 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
         }
       }
 
+      val steadyMessage = if (phase % 3 == 0) {
+        if (lang == "ar") "خطوات صغيرة ترفع نتيجتك بسرعة" else "Small wins now level up your score"
+      } else if (phase % 3 == 1) {
+        if (lang == "ar") "دفعة واحدة الآن تصنع فرق" else "One quick action makes a difference"
+      } else {
+        if (lang == "ar") "أنت قريب من مستوى أعلى" else "You are close to the next level"
+      }
+
       return if (lang == "ar") {
         WidgetStatusUi(
           chip = "ثابت",
-          message = "خطوات صغيرة ترفع نتيجتك بسرعة",
+          message = steadyMessage,
           chipBg = Color.parseColor("#DBEAFE"),
           chipFg = Color.parseColor("#1D4ED8"),
           messageColor = Color.parseColor("#1E293B"),
@@ -269,7 +307,7 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
       } else {
         WidgetStatusUi(
           chip = "Steady",
-          message = "Small wins now level up your score",
+          message = steadyMessage,
           chipBg = Color.parseColor("#DBEAFE"),
           chipFg = Color.parseColor("#1D4ED8"),
           messageColor = Color.parseColor("#1E293B"),
@@ -277,6 +315,83 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
           tasksValueColor = Color.parseColor("#166534"),
         )
       }
+    }
+
+    private fun resolvePalette(): WidgetPalette {
+      val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+      return when {
+        hour in 6..11 -> WidgetPalette(
+          rootBg = Color.parseColor("#FFF7ED"),
+          waterBtnBg = Color.parseColor("#FED7AA"),
+          waterBtnFg = Color.parseColor("#9A3412"),
+          taskBtnBg = Color.parseColor("#D9F99D"),
+          taskBtnFg = Color.parseColor("#3F6212"),
+          streakBg = Color.parseColor("#FEF3C7"),
+          streakFg = Color.parseColor("#92400E"),
+        )
+
+        hour in 12..17 -> WidgetPalette(
+          rootBg = Color.parseColor("#ECFEFF"),
+          waterBtnBg = Color.parseColor("#BAE6FD"),
+          waterBtnFg = Color.parseColor("#0C4A6E"),
+          taskBtnBg = Color.parseColor("#BBF7D0"),
+          taskBtnFg = Color.parseColor("#14532D"),
+          streakBg = Color.parseColor("#DBEAFE"),
+          streakFg = Color.parseColor("#1E40AF"),
+        )
+
+        else -> WidgetPalette(
+          rootBg = Color.parseColor("#F8FAFC"),
+          waterBtnBg = Color.parseColor("#CFFAFE"),
+          waterBtnFg = Color.parseColor("#155E75"),
+          taskBtnBg = Color.parseColor("#DCFCE7"),
+          taskBtnFg = Color.parseColor("#166534"),
+          streakBg = Color.parseColor("#EDE9FE"),
+          streakFg = Color.parseColor("#5B21B6"),
+        )
+      }
+    }
+
+    private fun dayKeyNow(): String {
+      val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+      return sdf.format(Calendar.getInstance().time)
+    }
+
+    private fun dayKeyYesterday(): String {
+      val cal = Calendar.getInstance()
+      cal.add(Calendar.DAY_OF_YEAR, -1)
+      val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+      return sdf.format(cal.time)
+    }
+
+    fun updateStreakOnSync(context: Context, score: Int, todayKey: String?) {
+      val prefs = context.getSharedPreferences("itmain_widget_prefs", Context.MODE_PRIVATE)
+      val resolvedToday = todayKey ?: dayKeyNow()
+      val lastStreakDay = prefs.getString("itmain_streak_last_day", "") ?: ""
+      val currentStreak = prefs.getInt("itmain_streak_count", 0)
+
+      var updatedStreak = currentStreak
+      var updatedDay = lastStreakDay
+
+      if (score >= 70) {
+        if (lastStreakDay != resolvedToday) {
+          updatedStreak = if (lastStreakDay == dayKeyYesterday()) {
+            (currentStreak + 1).coerceAtLeast(1)
+          } else {
+            1
+          }
+          updatedDay = resolvedToday
+        }
+      }
+
+      val oldPhase = prefs.getInt("itmain_widget_phase", 0)
+      val nextPhase = (oldPhase + 1) % 6
+
+      prefs.edit()
+        .putInt("itmain_streak_count", updatedStreak)
+        .putString("itmain_streak_last_day", updatedDay)
+        .putInt("itmain_widget_phase", nextPhase)
+        .apply()
     }
 
     private fun applyAddWater(context: Context) {
@@ -294,6 +409,7 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
         .putInt("itmain_water_amount", updatedWater)
         .putInt("itmain_hydration_percent", hydrationPercent)
         .putInt("itmain_pending_water_delta_ml", pendingDelta + 250)
+        .putInt("itmain_widget_phase", (prefs.getInt("itmain_widget_phase", 0) + 1) % 6)
         .apply()
     }
 
@@ -330,6 +446,8 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
         val pendingTasks = prefs.getInt("itmain_pending_task_completions", 0)
         editor.putInt("itmain_pending_task_completions", pendingTasks + 1)
       }
+
+      editor.putInt("itmain_widget_phase", (prefs.getInt("itmain_widget_phase", 0) + 1) % 6)
 
       editor.apply()
     }

@@ -15,6 +15,12 @@ class HomeWidgetPendingActions {
 class HomeWidgetSyncService {
   static const MethodChannel _channel = MethodChannel('itmain/home_widget');
 
+  static String _todayKey(DateTime now) {
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    return '${now.year}-$month-$day';
+  }
+
   static Future<void> syncDashboardSnapshot({
     required bool isAr,
     required int waterAmount,
@@ -27,6 +33,7 @@ class HomeWidgetSyncService {
     required bool lowFatDay,
     required int score,
   }) async {
+    final now = DateTime.now();
     final checklistDone = [chkVitD, walk30, sun15, lowFatDay]
         .where((v) => v)
         .length;
@@ -39,7 +46,9 @@ class HomeWidgetSyncService {
       'itmain_water_text': '$waterAmount/$waterGoal mL',
       'itmain_tasks_text': '$checklistDone/4',
       'itmain_score_text': '$score%',
+      'itmain_score_value': score,
       'itmain_hydration_percent': hydrationPercent,
+      'itmain_today_key': _todayKey(now),
       'itmain_water_amount': waterAmount,
       'itmain_water_goal': waterGoal,
       'itmain_green_tea_count': greenTeaCount,
