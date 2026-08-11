@@ -7,8 +7,7 @@ class MealAnalyzerViewModel extends ChangeNotifier {
   MealAnalyzerViewModel({
     OpenFoodFactsService? nutritionService,
     GrokHealthCoachService? coachService,
-  })
-      : _nutritionService = nutritionService ?? OpenFoodFactsService(),
+  })  : _nutritionService = nutritionService ?? OpenFoodFactsService(),
         _coachService = coachService ?? const GrokHealthCoachService();
 
   Map<String, dynamic>? _analyzedResult;
@@ -43,12 +42,18 @@ class MealAnalyzerViewModel extends ChangeNotifier {
 
     try {
       final barcode = _extractBarcodeCandidate(mealName);
+      final isShoppingMode = barcode != null;
       final nutrients = barcode != null
           ? await _nutritionService.searchByBarcode(barcode) ??
               await _nutritionService.searchMeal(mealName)
           : await _nutritionService.searchMeal(mealName);
       if (nutrients != null) {
-        _analyzedResult = _buildFromApi(mealName: mealName, nutrients: nutrients, isAr: isAr);
+        _analyzedResult = _buildFromApi(
+          mealName: mealName,
+          nutrients: nutrients,
+          isAr: isAr,
+          isShoppingMode: isShoppingMode,
+        );
         await _generateCoachSummary(mealName: mealName, isAr: isAr);
         return;
       }
@@ -102,6 +107,7 @@ class MealAnalyzerViewModel extends ChangeNotifier {
     required String mealName,
     required MealNutrients nutrients,
     required bool isAr,
+    required bool isShoppingMode,
   }) {
     final sodium = nutrients.sodiumMgPer100g ?? 0;
     final sugar = nutrients.sugarPer100g ?? 0;
@@ -132,9 +138,7 @@ class MealAnalyzerViewModel extends ChangeNotifier {
       risk += 1;
     }
 
-    final score = risk >= 4
-        ? 'LOW'
-        : (risk >= 2 ? 'MEDIUM' : 'HIGH');
+    final score = risk >= 4 ? 'LOW' : (risk >= 2 ? 'MEDIUM' : 'HIGH');
 
     final availableMetrics = <double?>[
       nutrients.caloriesPer100g,
@@ -146,26 +150,26 @@ class MealAnalyzerViewModel extends ChangeNotifier {
     ].where((v) => v != null).length;
 
     final confidence = availableMetrics >= 5
-      ? (isAr ? 'ثقة عالية' : 'High confidence')
-      : (availableMetrics >= 3
-        ? (isAr ? 'ثقة متوسطة' : 'Moderate confidence')
-        : (isAr ? 'ثقة محدودة' : 'Limited confidence'));
+        ? (isAr ? 'ثقة عالية' : 'High confidence')
+        : (availableMetrics >= 3
+            ? (isAr ? 'ثقة متوسطة' : 'Moderate confidence')
+            : (isAr ? 'ثقة محدودة' : 'Limited confidence'));
 
     final reason = score == 'LOW'
-      ? (isAr
-        ? 'النتيجة منخفضة لأن السكر/الصوديوم/الدهون المشبعة مرتفعة لكل 100غ.'
-        : 'Low suitability due to elevated sugar/sodium/saturated fat per 100g.')
-      : (score == 'MEDIUM'
         ? (isAr
-          ? 'النتيجة متوسطة: بعض المؤشرات الغذائية تحتاج تعديل في الطلب.'
-          : 'Moderate suitability: some nutrients need ordering modifications.')
-        : (isAr
-          ? 'النتيجة عالية: الملف الغذائي مناسب غالبا لكل 100غ.'
-          : 'High suitability: nutrient profile is generally favorable per 100g.'));
+            ? 'النتيجة منخفضة لأن السكر/الصوديوم/الدهون المشبعة مرتفعة لكل 100غ.'
+            : 'Low suitability due to elevated sugar/sodium/saturated fat per 100g.')
+        : (score == 'MEDIUM'
+            ? (isAr
+                ? 'النتيجة متوسطة: بعض المؤشرات الغذائية تحتاج تعديل في الطلب.'
+                : 'Moderate suitability: some nutrients need ordering modifications.')
+            : (isAr
+                ? 'النتيجة عالية: الملف الغذائي مناسب غالبا لكل 100غ.'
+                : 'High suitability: nutrient profile is generally favorable per 100g.'));
 
     final caveat = isAr
-      ? 'القيم لكل 100غ وقد تختلف عن الحصة الفعلية، وبيانات المصدر مجتمعية.'
-      : 'Values are per 100g and may differ from your actual serving; source data is community contributed.';
+        ? 'القيم لكل 100غ وقد تختلف عن الحصة الفعلية، وبيانات المصدر مجتمعية.'
+        : 'Values are per 100g and may differ from your actual serving; source data is community contributed.';
 
     final proteinLabel = protein >= 15
         ? (isAr ? 'بروتين جيد لكل 100غ' : 'Good Protein per 100g')
@@ -176,6 +180,11 @@ class MealAnalyzerViewModel extends ChangeNotifier {
         : (saturatedFat >= 2
             ? (isAr ? 'دهون مشبعة متوسطة' : 'Moderate Saturated Fat')
             : (isAr ? 'دهون مشبعة منخفضة' : 'Low Saturated Fat'));
+
+    final shoppingSignals = _buildShoppingSignals(
+      nutrients: nutrients,
+      isAr: isAr,
+    );
 
     final tips = <String>[];
     if (sodium >= 600) {
@@ -234,6 +243,11 @@ class MealAnalyzerViewModel extends ChangeNotifier {
       'fat': fatLabel,
       'tips': tips,
       'source': 'open_food_facts',
+      'is_shopping_mode': isShoppingMode,
+      'shopping_verdict': shoppingSignals.verdict,
+      'shopping_headline': shoppingSignals.headline,
+      'shopping_flags': shoppingSignals.flags,
+      'additives_count': nutrients.additivesCount,
     };
   }
 
@@ -326,16 +340,16 @@ class MealAnalyzerViewModel extends ChangeNotifier {
     );
 
     final reason = score == 'LOW'
-      ? (isAr
-        ? 'النتيجة منخفضة اعتمادا على كلمات تدل على أطعمة عالية الخطورة.'
-        : 'Low suitability from high-risk meal keywords.')
-      : (score == 'MEDIUM'
         ? (isAr
-          ? 'النتيجة متوسطة: الوجبة تحتاج تعديلات صحية بسيطة.'
-          : 'Moderate suitability: meal likely needs minor healthy modifications.')
-        : (isAr
-          ? 'النتيجة عالية بناء على كلمات تدل على خيارات صحية.'
-          : 'High suitability based on healthy meal keywords.'));
+            ? 'النتيجة منخفضة اعتمادا على كلمات تدل على أطعمة عالية الخطورة.'
+            : 'Low suitability from high-risk meal keywords.')
+        : (score == 'MEDIUM'
+            ? (isAr
+                ? 'النتيجة متوسطة: الوجبة تحتاج تعديلات صحية بسيطة.'
+                : 'Moderate suitability: meal likely needs minor healthy modifications.')
+            : (isAr
+                ? 'النتيجة عالية بناء على كلمات تدل على خيارات صحية.'
+                : 'High suitability based on healthy meal keywords.'));
 
     return {
       'dish': mealName,
@@ -344,8 +358,8 @@ class MealAnalyzerViewModel extends ChangeNotifier {
       'confidence': isAr ? 'ثقة محدودة' : 'Limited confidence',
       'matched_name': mealName,
       'caveat': isAr
-        ? 'هذا تحليل احتياطي محلي وليس بيانات غذائية مخبرية من API.'
-        : 'This is local fallback analysis, not full nutrient API data.',
+          ? 'هذا تحليل احتياطي محلي وليس بيانات غذائية مخبرية من API.'
+          : 'This is local fallback analysis, not full nutrient API data.',
       'protein': (textLower.contains('salmon') ||
               textLower.contains('chicken') ||
               textLower.contains('دجاج') ||
@@ -357,6 +371,97 @@ class MealAnalyzerViewModel extends ChangeNotifier {
           : (isAr ? 'دهون غير مشبعة منخفضة' : 'Low Saturated Fat'),
       'tips': tips,
       'source': 'local_fallback',
+      'is_shopping_mode': false,
+      'shopping_verdict': '',
+      'shopping_headline': '',
+      'shopping_flags': const <String>[],
+      'additives_count': null,
     };
   }
+
+  _ShoppingSignals _buildShoppingSignals({
+    required MealNutrients nutrients,
+    required bool isAr,
+  }) {
+    final flags = <String>[];
+    int riskCount = 0;
+
+    final sodium = nutrients.sodiumMgPer100g ?? 0;
+    final sugar = nutrients.sugarPer100g ?? 0;
+    final saturatedFat = nutrients.saturatedFatPer100g ?? 0;
+    final additives = nutrients.additivesCount ?? 0;
+    final protein = nutrients.proteinPer100g ?? 0;
+
+    if (sodium >= 600) {
+      riskCount += 1;
+      flags.add(isAr ? 'صوديوم مرتفع' : 'High sodium');
+    } else if (sodium <= 180 && sodium > 0) {
+      flags.add(isAr ? 'صوديوم منخفض' : 'Lower sodium');
+    }
+
+    if (sugar >= 10) {
+      riskCount += 1;
+      flags.add(isAr ? 'سكر مرتفع' : 'High sugar');
+    } else if (sugar <= 5 && sugar > 0) {
+      flags.add(isAr ? 'سكر أقل' : 'Lower sugar');
+    }
+
+    if (saturatedFat >= 5) {
+      riskCount += 1;
+      flags.add(isAr ? 'دهون مشبعة مرتفعة' : 'High sat fat');
+    } else if (saturatedFat <= 1.5 && saturatedFat > 0) {
+      flags.add(isAr ? 'دهون مشبعة أقل' : 'Lower sat fat');
+    }
+
+    if (additives >= 6) {
+      riskCount += 1;
+      flags.add(isAr ? 'إضافات كثيرة' : 'Many additives');
+    } else if (additives > 0 && additives <= 2) {
+      flags.add(isAr ? 'إضافات أقل' : 'Fewer additives');
+    }
+
+    if (protein >= 10) {
+      flags.add(isAr ? 'بروتين جيد' : 'Good protein');
+    }
+
+    if (riskCount >= 3) {
+      return _ShoppingSignals(
+        verdict: isAr ? 'اتركه أو بدله' : 'Limit or replace',
+        headline: isAr
+            ? 'المنتج يحتاج بديلا أقل صوديومًا وسكرًا وإضافات.'
+            : 'Look for a cleaner swap with less sodium, sugar, and additives.',
+        flags: flags,
+      );
+    }
+
+    if (riskCount == 2) {
+      return _ShoppingSignals(
+        verdict: isAr ? 'مقبول أحيانًا' : 'Use occasionally',
+        headline: isAr
+            ? 'يمكن شراؤه لكن بحجم أصغر أو مع بقية يوم أخف.'
+            : 'Reasonable as an occasional choice, preferably in a smaller portion.',
+        flags: flags,
+      );
+    }
+
+    return _ShoppingSignals(
+      verdict: isAr ? 'خيار رف جيد' : 'Good shelf option',
+      headline: isAr
+          ? 'الملف الغذائي مناسب نسبيًا لمنتج معلب أو مغلف.'
+          : 'This looks like a relatively liver-friendlier packaged choice.',
+      flags: flags,
+    );
+  }
+}
+
+class _ShoppingSignals {
+  final String verdict;
+  final String headline;
+  final List<String> flags;
+
+  const _ShoppingSignals({
+    required this.verdict,
+    required this.headline,
+    required this.flags,
+  });
 }

@@ -1,176 +1,192 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F1F5F9"
-    android:orientation="vertical"
-    android:padding="8dp">
-
-    <TextView
-        android:id="@+id/highlight_bar"
-        android:layout_width="match_parent"
-        android:layout_height="3dp"
-        android:text=""
-        android:background="#0EA5E9" />
+    android:background="#00000000"
+    android:padding="6dp">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:layout_height="match_parent"
+        android:background="@drawable/itmain_widget_surface"
+        android:orientation="vertical"
+        android:padding="12dp">
 
         <TextView
-            android:id="@+id/text_app_title"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Itmain"
-            android:textColor="#0F172A"
-            android:textSize="13sp"
-            android:textStyle="bold" />
+            android:id="@+id/highlight_bar"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginBottom="10dp"
+            android:background="#0EA5E9"
+            android:text="" />
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/text_streak_badge"
-                android:layout_width="wrap_content"
+                android:id="@+id/text_app_title"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="5dp"
-                android:background="#FEF3C7"
-                android:gravity="center"
-                android:paddingHorizontal="5dp"
-                android:paddingVertical="2dp"
-                android:text="S1"
-                android:textColor="#92400E"
-                android:textSize="8sp"
+                android:layout_weight="1"
+                android:text="Itmain"
+                android:textColor="#173629"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/text_status_chip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="#DBEAFE"
-                android:gravity="center"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="2dp"
+                android:background="@drawable/itmain_widget_chip"
+                android:paddingLeft="8dp"
+                android:paddingTop="4dp"
+                android:paddingRight="8dp"
+                android:paddingBottom="4dp"
                 android:text="Go"
-                android:textColor="#1D4ED8"
+                android:textColor="#245D90"
                 android:textSize="9sp"
                 android:textStyle="bold" />
         </LinearLayout>
-    </LinearLayout>
 
-    <TextView
-        android:id="@+id/text_subtitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Daily Water &amp; Tasks"
-        android:textColor="#475569"
-        android:textSize="9sp" />
+        <TextView
+            android:id="@+id/text_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Latest lab: none"
+            android:textColor="#617A70"
+            android:textSize="9sp" />
 
-    <TextView
-        android:id="@+id/text_motivation"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="Quick boost now"
-        android:textColor="#0F172A"
-        android:textSize="10sp"
-        android:textStyle="bold" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        <TextView
+            android:id="@+id/text_motivation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:text="Next action: keep momentum"
+            android:textColor="#173629"
+            android:textSize="11sp"
+            android:textStyle="bold" />
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:layout_marginTop="8dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/text_water_label"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Hydration"
-                android:textColor="#334155"
-                android:textSize="9sp" />
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/itmain_widget_stat_card"
+                android:orientation="vertical"
+                android:padding="10dp">
 
-            <TextView
-                android:id="@+id/text_water_value"
-                android:layout_width="wrap_content"
+                <TextView
+                    android:id="@+id/text_water_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Hydration"
+                    android:textColor="#6A8579"
+                    android:textSize="8sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/text_water_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="0/3000"
+                    android:textColor="#146D97"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="0/3000 mL"
-                android:textColor="#0369A1"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/itmain_widget_stat_card"
+                android:orientation="vertical"
+                android:padding="10dp">
+
+                <TextView
+                    android:id="@+id/text_tasks_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Meds"
+                    android:textColor="#6A8579"
+                    android:textSize="8sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/text_tasks_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="0/0"
+                    android:textColor="#1F7A53"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/text_tasks_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tasks"
-                android:textColor="#334155"
-                android:textSize="9sp" />
+                android:id="@+id/btn_add_water"
+                android:layout_width="0dp"
+                android:layout_height="34dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/itmain_widget_secondary_action"
+                android:gravity="center"
+                android:text="+250"
+                android:textColor="#155C78"
+                android:textSize="10sp"
+                android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/text_tasks_value"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0/4"
-                android:textColor="#166534"
-                android:textSize="11sp"
+                android:id="@+id/btn_mark_task"
+                android:layout_width="0dp"
+                android:layout_height="34dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/itmain_widget_primary_action"
+                android:gravity="center"
+                android:text="Done"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
                 android:textStyle="bold" />
         </LinearLayout>
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:orientation="horizontal">
 
         <TextView
-            android:id="@+id/btn_add_water"
-            android:layout_width="0dp"
-            android:layout_height="30dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="6dp"
-            android:background="#E0F2FE"
-            android:gravity="center"
-            android:paddingHorizontal="8dp"
-            android:text="+250 mL"
-            android:textColor="#075985"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/btn_mark_task"
-            android:layout_width="0dp"
-            android:layout_height="30dp"
-            android:layout_weight="1"
-            android:background="#DCFCE7"
-            android:gravity="center"
-            android:paddingHorizontal="8dp"
-            android:text="Done Task"
-            android:textColor="#166534"
-            android:textSize="10sp"
+            android:id="@+id/text_streak_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/itmain_widget_chip"
+            android:paddingLeft="8dp"
+            android:paddingTop="4dp"
+            android:paddingRight="8dp"
+            android:paddingBottom="4dp"
+            android:text="Streak 1d"
+            android:textColor="#8A5A13"
+            android:textSize="8sp"
             android:textStyle="bold" />
     </LinearLayout>
-</LinearLayout>
+</FrameLayout>

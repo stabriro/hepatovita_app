@@ -19,6 +19,11 @@ class MealAnalysisUiModel {
   final String fat;
   final List<String> tips;
   final String source;
+  final bool isShoppingMode;
+  final String shoppingVerdict;
+  final String shoppingHeadline;
+  final List<String> shoppingFlags;
+  final int? additivesCount;
 
   const MealAnalysisUiModel({
     required this.dish,
@@ -37,6 +42,11 @@ class MealAnalysisUiModel {
     required this.fat,
     required this.tips,
     required this.source,
+    required this.isShoppingMode,
+    required this.shoppingVerdict,
+    required this.shoppingHeadline,
+    required this.shoppingFlags,
+    required this.additivesCount,
   });
 }
 
@@ -79,99 +89,117 @@ class MealAnalyzerTabView extends StatelessWidget {
               yOffset: compact ? 14 : 20,
               child: Container(
                 padding: EdgeInsets.all(cardPadding),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFFE2EDE6)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x120F2E22),
-                blurRadius: 20,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.tr('meal_analyzer_title'),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: mealSearchController,
-                decoration: InputDecoration(
-                  hintText: l10n.tr('meal_analyzer_hint'),
-                  prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF2E7D32)),
-                  filled: true,
-                  fillColor: const Color(0xFFF9FBF9),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.grey.shade300)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: isAnalyzing
-                      ? null
-                      : () async {
-                          await onAnalyzeMeal(mealSearchController.text);
-                        },
-                  icon: isAnalyzing
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.auto_awesome_rounded),
-                  label: Text(l10n.tr('analyze_dish')),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B3B2B),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  ),
-                ),
-              ),
-              if (supportsImageActions) ...[
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: compact ? 6 : 8,
-                  runSpacing: compact ? 6 : 8,
-                  children: [
-                    SizedBox(
-                      width: compact ? constraints.maxWidth - (cardPadding * 2) : ((constraints.maxWidth - (cardPadding * 2) - 8) / 2),
-                      child: OutlinedButton.icon(
-                        onPressed: isAnalyzing
-                            ? null
-                            : () async {
-                                await onAnalyzeFromBarcode?.call();
-                              },
-                        icon: const Icon(Icons.qr_code_scanner_rounded),
-                        label: Text(l10n.tr('analyze_barcode')),
-                      ),
-                    ),
-                    SizedBox(
-                      width: compact ? constraints.maxWidth - (cardPadding * 2) : ((constraints.maxWidth - (cardPadding * 2) - 8) / 2),
-                      child: OutlinedButton.icon(
-                        onPressed: isAnalyzing
-                            ? null
-                            : () async {
-                                await onAnalyzeFromTextImage?.call();
-                              },
-                        icon: const Icon(Icons.document_scanner_rounded),
-                        label: Text(l10n.tr('analyze_label_text')),
-                      ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: const Color(0xFFE2EDE6)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x120F2E22),
+                      blurRadius: 20,
+                      offset: Offset(0, 8),
                     ),
                   ],
                 ),
-              ],
-            ],
-          ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.tr('meal_analyzer_title'),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Color(0xFF1B3B2B)),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: mealSearchController,
+                      decoration: InputDecoration(
+                        hintText: l10n.tr('meal_analyzer_hint'),
+                        prefixIcon: const Icon(Icons.search_rounded,
+                            color: Color(0xFF2E7D32)),
+                        filled: true,
+                        fillColor: const Color(0xFFF9FBF9),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade300)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: isAnalyzing
+                            ? null
+                            : () async {
+                                await onAnalyzeMeal(mealSearchController.text);
+                              },
+                        icon: isAnalyzing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.auto_awesome_rounded),
+                        label: Text(l10n.tr('analyze_dish')),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B3B2B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20)),
+                        ),
+                      ),
+                    ),
+                    if (supportsImageActions) ...[
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: compact ? 6 : 8,
+                        runSpacing: compact ? 6 : 8,
+                        children: [
+                          SizedBox(
+                            width: compact
+                                ? constraints.maxWidth - (cardPadding * 2)
+                                : ((constraints.maxWidth -
+                                        (cardPadding * 2) -
+                                        8) /
+                                    2),
+                            child: OutlinedButton.icon(
+                              onPressed: isAnalyzing
+                                  ? null
+                                  : () async {
+                                      await onAnalyzeFromBarcode?.call();
+                                    },
+                              icon: const Icon(Icons.qr_code_scanner_rounded),
+                              label: Text(l10n.tr('analyze_barcode')),
+                            ),
+                          ),
+                          SizedBox(
+                            width: compact
+                                ? constraints.maxWidth - (cardPadding * 2)
+                                : ((constraints.maxWidth -
+                                        (cardPadding * 2) -
+                                        8) /
+                                    2),
+                            child: OutlinedButton.icon(
+                              onPressed: isAnalyzing
+                                  ? null
+                                  : () async {
+                                      await onAnalyzeFromTextImage?.call();
+                                    },
+                              icon: const Icon(Icons.document_scanner_rounded),
+                              label: Text(l10n.tr('analyze_label_text')),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
             SizedBox(height: compact ? 12 : 16),
@@ -181,198 +209,343 @@ class MealAnalyzerTabView extends StatelessWidget {
                 yOffset: compact ? 14 : 20,
                 child: Container(
                   padding: EdgeInsets.all(cardPadding),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: const Color(0xFFE2EDE6)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x120F2E22),
-                  blurRadius: 20,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  analysis!.dish,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1B3B2B)),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: analysis!.score == 'HIGH'
-                        ? Colors.green.shade50
-                        : (analysis!.score == 'LOW' ? Colors.red.shade50 : Colors.amber.shade50),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: analysis!.score == 'HIGH'
-                          ? Colors.green.shade300
-                          : (analysis!.score == 'LOW' ? Colors.red.shade300 : Colors.amber.shade300),
-                    ),
-                  ),
-                  child: Text(
-                    analysis!.score == 'HIGH'
-                      ? '🟢 ${l10n.tr('liver_friendly_excellent')}'
-                        : (analysis!.score == 'LOW'
-                        ? '🔴 ${l10n.tr('higher_risk_change_order')}'
-                        : '🟡 ${l10n.tr('moderate_risk_modify_order')}'),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                      color: analysis!.score == 'HIGH'
-                          ? Colors.green.shade900
-                          : (analysis!.score == 'LOW' ? Colors.red.shade900 : Colors.amber.shade900),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  analysis!.reason,
-                  style: const TextStyle(fontSize: 12, color: Colors.black87),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${l10n.tr('matched_item')}: ${analysis!.matchedName}',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-                Text(
-                  '${l10n.tr('confidence')}: ${analysis!.confidence}',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-                const SizedBox(height: 16),
-                _MacroMetric(
-                  title: '${l10n.tr('protein_profile')}:',
-                  subtitle: analysis!.protein,
-                  color: Colors.blue,
-                  value: 0.8,
-                ),
-                const SizedBox(height: 8),
-                _MacroMetric(
-                  title: '${l10n.tr('fat_risk_level')}:',
-                  subtitle: analysis!.fat,
-                  color: analysis!.score == 'LOW' ? Colors.red : Colors.green,
-                  value: analysis!.score == 'LOW' ? 0.9 : 0.3,
-                ),
-                if (analysis!.source == 'open_food_facts') ...[
-                  const SizedBox(height: 14),
-                  Text(
-                    '${l10n.tr('nutrition_facts_per_100g')}:',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: Color(0xFF1B3B2B),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _NutrientChip(label: l10n.tr('nutrient_energy'), value: _fmt(analysis!.kcalPer100g, 'kcal')),
-                      _NutrientChip(label: l10n.tr('nutrient_protein'), value: _fmt(analysis!.proteinPer100g, 'g')),
-                      _NutrientChip(label: l10n.tr('nutrient_fat'), value: _fmt(analysis!.fatPer100g, 'g')),
-                      _NutrientChip(label: l10n.tr('nutrient_sat_fat'), value: _fmt(analysis!.satFatPer100g, 'g')),
-                      _NutrientChip(label: l10n.tr('nutrient_sugar'), value: _fmt(analysis!.sugarPer100g, 'g')),
-                      _NutrientChip(label: l10n.tr('nutrient_sodium'), value: _fmt(analysis!.sodiumMgPer100g, 'mg')),
-                    ],
-                  ),
-                ],
-                const Divider(height: 28),
-                Text(
-                  analysis!.source == 'open_food_facts'
-                      ? l10n.tr('dynamic_analysis_free_api')
-                      : l10n.tr('local_fallback_analysis'),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  analysis!.caveat,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF4F7F4),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFD7E7DB)),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF2E7D32)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          l10n.tr('meal_analyzer_educational_note'),
-                          style: const TextStyle(fontSize: 11, height: 1.35, color: Color(0xFF1B3B2B)),
-                        ),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: const Color(0xFFE2EDE6)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x120F2E22),
+                        blurRadius: 20,
+                        offset: Offset(0, 8),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.lightbulb_rounded, color: Colors.amber, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${l10n.tr('meal_analyzer_suggestions_title')}:',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B3B2B)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ...analysis!.tips.map(
-                  (tip) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Expanded(child: Text(tip, style: const TextStyle(fontSize: 12, color: Colors.black87))),
-                      ],
-                    ),
-                  ),
-                ),
-                if (coachSummary != null || isGeneratingCoachSummary) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4F7F4),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFD7E7DB)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.psychology_alt_rounded, size: 18, color: Color(0xFF2E7D32)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            isGeneratingCoachSummary
-                                ? (Directionality.of(context) == TextDirection.rtl
-                                    ? 'جاري إعداد ملخص مساعد...' 
-                                    : 'Preparing coach summary...')
-                                : coachSummary!,
-                            style: const TextStyle(fontSize: 12, height: 1.4, color: Color(0xFF1B3B2B)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        analysis!.dish,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Color(0xFF1B3B2B)),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: analysis!.score == 'HIGH'
+                              ? Colors.green.shade50
+                              : (analysis!.score == 'LOW'
+                                  ? Colors.red.shade50
+                                  : Colors.amber.shade50),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: analysis!.score == 'HIGH'
+                                ? Colors.green.shade300
+                                : (analysis!.score == 'LOW'
+                                    ? Colors.red.shade300
+                                    : Colors.amber.shade300),
+                          ),
+                        ),
+                        child: Text(
+                          analysis!.score == 'HIGH'
+                              ? '🟢 ${l10n.tr('liver_friendly_excellent')}'
+                              : (analysis!.score == 'LOW'
+                                  ? '🔴 ${l10n.tr('higher_risk_change_order')}'
+                                  : '🟡 ${l10n.tr('moderate_risk_modify_order')}'),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: analysis!.score == 'HIGH'
+                                ? Colors.green.shade900
+                                : (analysis!.score == 'LOW'
+                                    ? Colors.red.shade900
+                                    : Colors.amber.shade900),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        analysis!.reason,
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.black87),
+                      ),
+                      if (analysis!.isShoppingMode ||
+                          analysis!.source == 'open_food_facts') ...[
+                        const SizedBox(height: 14),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F8F5),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: const Color(0xFFD7E7DB)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE2F3EA),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      Icons.shopping_basket_rounded,
+                                      size: 18,
+                                      color: Color(0xFF1B3B2B),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      l10n.tr('shopping_scanner_title'),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF1B3B2B),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFFFFF),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                      color: const Color(0xFFCEE5D5)),
+                                ),
+                                child: Text(
+                                  analysis!.shoppingVerdict,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF21523E),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                analysis!.shoppingHeadline,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  height: 1.35,
+                                  color: Color(0xFF334155),
+                                ),
+                              ),
+                              if (analysis!.shoppingFlags.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: analysis!.shoppingFlags
+                                      .map((flag) => _NutrientChip(
+                                          label:
+                                              l10n.tr('shopping_signal_label'),
+                                          value: flag))
+                                      .toList(),
+                                ),
+                              ],
+                              if (analysis!.additivesCount != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${l10n.tr('shopping_additives_label')}: ${analysis!.additivesCount}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ],
-                    ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${l10n.tr('matched_item')}: ${analysis!.matchedName}',
+                        style:
+                            const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      Text(
+                        '${l10n.tr('confidence')}: ${analysis!.confidence}',
+                        style:
+                            const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      _MacroMetric(
+                        title: '${l10n.tr('protein_profile')}:',
+                        subtitle: analysis!.protein,
+                        color: Colors.blue,
+                        value: 0.8,
+                      ),
+                      const SizedBox(height: 8),
+                      _MacroMetric(
+                        title: '${l10n.tr('fat_risk_level')}:',
+                        subtitle: analysis!.fat,
+                        color: analysis!.score == 'LOW'
+                            ? Colors.red
+                            : Colors.green,
+                        value: analysis!.score == 'LOW' ? 0.9 : 0.3,
+                      ),
+                      if (analysis!.source == 'open_food_facts') ...[
+                        const SizedBox(height: 14),
+                        Text(
+                          '${l10n.tr('nutrition_facts_per_100g')}:',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Color(0xFF1B3B2B),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _NutrientChip(
+                                label: l10n.tr('nutrient_energy'),
+                                value: _fmt(analysis!.kcalPer100g, 'kcal')),
+                            _NutrientChip(
+                                label: l10n.tr('nutrient_protein'),
+                                value: _fmt(analysis!.proteinPer100g, 'g')),
+                            _NutrientChip(
+                                label: l10n.tr('nutrient_fat'),
+                                value: _fmt(analysis!.fatPer100g, 'g')),
+                            _NutrientChip(
+                                label: l10n.tr('nutrient_sat_fat'),
+                                value: _fmt(analysis!.satFatPer100g, 'g')),
+                            _NutrientChip(
+                                label: l10n.tr('nutrient_sugar'),
+                                value: _fmt(analysis!.sugarPer100g, 'g')),
+                            _NutrientChip(
+                                label: l10n.tr('nutrient_sodium'),
+                                value: _fmt(analysis!.sodiumMgPer100g, 'mg')),
+                          ],
+                        ),
+                      ],
+                      const Divider(height: 28),
+                      Text(
+                        analysis!.source == 'open_food_facts'
+                            ? l10n.tr('dynamic_analysis_free_api')
+                            : l10n.tr('local_fallback_analysis'),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        analysis!.caveat,
+                        style:
+                            const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF4F7F4),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFD7E7DB)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.info_outline_rounded,
+                                size: 18, color: Color(0xFF2E7D32)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                l10n.tr('meal_analyzer_educational_note'),
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    height: 1.35,
+                                    color: Color(0xFF1B3B2B)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.lightbulb_rounded,
+                              color: Colors.amber, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${l10n.tr('meal_analyzer_suggestions_title')}:',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: Color(0xFF1B3B2B)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ...analysis!.tips.map(
+                        (tip) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('• ',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold)),
+                              Expanded(
+                                  child: Text(tip,
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.black87))),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (coachSummary != null || isGeneratingCoachSummary) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF4F7F4),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFD7E7DB)),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.psychology_alt_rounded,
+                                  size: 18, color: Color(0xFF2E7D32)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  isGeneratingCoachSummary
+                                      ? (Directionality.of(context) ==
+                                              TextDirection.rtl
+                                          ? 'جاري إعداد ملخص مساعد...'
+                                          : 'Preparing coach summary...')
+                                      : coachSummary!,
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      height: 1.4,
+                                      color: Color(0xFF1B3B2B)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-              ],
-            ),
                 ),
               )
             else
@@ -418,13 +591,19 @@ class _MealAnalyzerEmptyState extends StatelessWidget {
                   color: const Color(0xFFE2F3EA),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.restaurant_menu_rounded, color: Color(0xFF1B3B2B), size: 22),
+                child: const Icon(Icons.restaurant_menu_rounded,
+                    color: Color(0xFF1B3B2B), size: 22),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  isAr ? 'نتيجة التحليل ستظهر هنا' : 'Meal analysis appears here',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                  isAr
+                      ? 'نتيجة التحليل ستظهر هنا'
+                      : 'Meal analysis appears here',
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1E293B)),
                 ),
               ),
             ],
@@ -432,8 +611,8 @@ class _MealAnalyzerEmptyState extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             isAr
-                ? 'جرّب كتابة اسم طبق أو تحليل باركود المنتج للحصول على تقييم مناسب للكبد.'
-                : 'Search a dish name or scan a barcode to get a liver-friendly score.',
+                ? 'جرّب كتابة اسم طبق أو مسح باركود منتج مغلف للحصول على تقييم مناسب للكبد.'
+                : 'Search a dish name or scan a packaged product barcode for a liver-friendly verdict.',
             style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
           ),
           const SizedBox(height: 10),
@@ -467,7 +646,10 @@ class _HintChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1F5A45)),
+        style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1F5A45)),
       ),
     );
   }
@@ -525,8 +707,11 @@ class _MacroMetric extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(title, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            Text(subtitle, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
+            Text(title,
+                style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text(subtitle,
+                style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.bold, color: color)),
           ],
         ),
         const SizedBox(height: 4),

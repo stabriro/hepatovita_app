@@ -57,6 +57,10 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
       val walk30 = prefs.getBoolean("itmain_walk30", false)
       val sun15 = prefs.getBoolean("itmain_sun15", false)
       val lowFatDay = prefs.getBoolean("itmain_low_fat_day", false)
+      val medTakenCount = prefs.getInt("itmain_med_taken_count", 0)
+      val medTotalCount = prefs.getInt("itmain_med_total_count", 0)
+      val latestLabText = prefs.getString("itmain_latest_lab_text", "") ?: ""
+      val nextActionText = prefs.getString("itmain_next_action_text", "") ?: ""
 
       val checklistDone = listOf(chkVitD, walk30, sun15, lowFatDay).count { it }
       val hydrationPercent = ((waterAmount.toDouble() / waterGoal.toDouble()) * 100)
@@ -73,13 +77,24 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
       )
 
       val title = if (lang == "ar") "اطمئن" else "Itmain"
-      val subtitle = if (lang == "ar") "الماء والمهام اليومية" else "Daily Water & Tasks"
+      val subtitlePrefix = if (lang == "ar") "مختبر" else "Lab"
+      val subtitle = if (latestLabText.isBlank()) {
+        if (lang == "ar") "مختبر: لا توجد تحاليل بعد" else "Lab: No labs yet"
+      } else {
+        "$subtitlePrefix: $latestLabText"
+      }
       val waterLabel = if (lang == "ar") "الترطيب" else "Hydration"
-      val tasksLabel = if (lang == "ar") "المهام" else "Tasks"
+      val tasksLabel = if (lang == "ar") "أدوية اليوم" else "Meds today"
       val quickWater = if (lang == "ar") "+250 ماء" else "+250 mL"
-      val quickTask = if (lang == "ar") "إنجاز مهمة" else "Done Task"
+      val quickTask = if (lang == "ar") "أنهِ التالي" else "Next done"
       val scoreLabel = if (lang == "ar") "الالتزام: $score%" else "Score: $score%"
       val streakLabel = if (lang == "ar") "سلسلة $streakCount" else "Streak ${streakCount}d"
+      val actionPrefix = if (lang == "ar") "الآن" else "Now"
+      val nextAction = if (nextActionText.isBlank()) {
+        if (lang == "ar") "الآن: واصل يومك الصحي" else "Now: keep your healthy day moving"
+      } else {
+        "$actionPrefix: $nextActionText"
+      }
 
       val highlightColor = resolveHighlightColor(hydrationPercent, checklistDone)
       val status = resolveStatus(lang, hydrationPercent, checklistDone, score, phase)
@@ -122,21 +137,16 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
           setTextViewText(R.id.text_water_label, waterLabel)
           setTextViewText(R.id.text_tasks_label, tasksLabel)
           setTextViewText(R.id.text_water_value, "$waterAmount/$waterGoal mL")
-          setTextViewText(R.id.text_tasks_value, "$checklistDone/4")
+          setTextViewText(R.id.text_tasks_value, "$medTakenCount/$medTotalCount")
           setTextViewText(R.id.text_streak_badge, streakLabel)
           setTextViewText(R.id.text_status_chip, status.chip)
-          setTextViewText(R.id.text_motivation, status.message)
+          setTextViewText(R.id.text_motivation, nextAction)
           setTextViewText(R.id.btn_add_water, quickWater)
           setTextViewText(R.id.btn_mark_task, quickTask)
           setInt(R.id.highlight_bar, "setBackgroundColor", highlightColor)
-          setInt(R.id.widget_root, "setBackgroundColor", palette.rootBg)
-          setInt(R.id.btn_add_water, "setBackgroundColor", palette.waterBtnBg)
-          setInt(R.id.btn_mark_task, "setBackgroundColor", palette.taskBtnBg)
           setTextColor(R.id.btn_add_water, palette.waterBtnFg)
           setTextColor(R.id.btn_mark_task, palette.taskBtnFg)
-          setInt(R.id.text_streak_badge, "setBackgroundColor", palette.streakBg)
           setTextColor(R.id.text_streak_badge, palette.streakFg)
-          setInt(R.id.text_status_chip, "setBackgroundColor", status.chipBg)
           setTextColor(R.id.text_status_chip, status.chipFg)
           setTextColor(R.id.text_motivation, status.messageColor)
           setTextColor(R.id.text_water_value, status.waterValueColor)

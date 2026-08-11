@@ -32,11 +32,14 @@ class HomeWidgetSyncService {
     required bool sun15,
     required bool lowFatDay,
     required int score,
+    required int medicationTakenCount,
+    required int medicationTotalCount,
+    required String latestLabText,
+    required String nextActionText,
   }) async {
     final now = DateTime.now();
-    final checklistDone = [chkVitD, walk30, sun15, lowFatDay]
-        .where((v) => v)
-        .length;
+    final checklistDone =
+        [chkVitD, walk30, sun15, lowFatDay].where((v) => v).length;
     final hydrationPercent =
         ((waterAmount / (waterGoal == 0 ? 1 : waterGoal)) * 100)
             .round()
@@ -58,6 +61,10 @@ class HomeWidgetSyncService {
       'itmain_sun15': sun15,
       'itmain_low_fat_day': lowFatDay,
       'itmain_lang': isAr ? 'ar' : 'en',
+      'itmain_med_taken_count': medicationTakenCount,
+      'itmain_med_total_count': medicationTotalCount,
+      'itmain_latest_lab_text': latestLabText,
+      'itmain_next_action_text': nextActionText,
     });
   }
 
@@ -66,7 +73,8 @@ class HomeWidgetSyncService {
   }
 
   static Future<HomeWidgetPendingActions> consumePendingActions() async {
-    final map = await _channel.invokeMapMethod<String, dynamic>('consumeWidgetActions');
+    final map =
+        await _channel.invokeMapMethod<String, dynamic>('consumeWidgetActions');
     final waterDelta = (map?['waterDeltaMl'] as num?)?.toInt() ?? 0;
     final taskCompletions = (map?['taskCompletions'] as num?)?.toInt() ?? 0;
     return HomeWidgetPendingActions(

@@ -1,53 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F1F5F9"
-    android:orientation="vertical"
-    android:padding="10dp">
-
-    <TextView
-        android:id="@+id/highlight_bar"
-        android:layout_width="match_parent"
-        android:layout_height="3dp"
-        android:layout_marginBottom="7dp"
-        android:text=""
-        android:background="#0EA5E9" />
+    android:background="#00000000"
+    android:padding="8dp">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:layout_height="match_parent"
+        android:background="@drawable/itmain_widget_surface"
+        android:orientation="vertical">
 
         <TextView
-            android:id="@+id/text_app_title"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Itmain"
-            android:textColor="#0F172A"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+            android:id="@+id/highlight_bar"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginBottom="12dp"
+            android:background="#0EA5E9"
+            android:text="" />
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/text_app_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Itmain"
+                    android:textColor="#163829"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Live health snapshot"
+                    android:textColor="#648173"
+                    android:textSize="10sp" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/text_streak_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="6dp"
-                android:background="#FEF3C7"
+                android:background="@drawable/itmain_widget_chip"
                 android:gravity="center"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="3dp"
+                android:paddingLeft="10dp"
+                android:paddingTop="5dp"
+                android:paddingRight="10dp"
+                android:paddingBottom="5dp"
                 android:text="Streak 1d"
-                android:textColor="#92400E"
+                android:textColor="#8A5A13"
                 android:textSize="10sp"
                 android:textStyle="bold" />
 
@@ -55,144 +70,184 @@
                 android:id="@+id/text_status_chip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="#DBEAFE"
+                android:background="@drawable/itmain_widget_chip"
                 android:gravity="center"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="3dp"
+                android:paddingLeft="10dp"
+                android:paddingTop="5dp"
+                android:paddingRight="10dp"
+                android:paddingBottom="5dp"
                 android:text="Steady"
-                android:textColor="#1D4ED8"
+                android:textColor="#245D90"
                 android:textSize="10sp"
                 android:textStyle="bold" />
         </LinearLayout>
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/text_subtitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="1dp"
-        android:text="Daily Water &amp; Tasks"
-        android:textColor="#475569"
-        android:textSize="10sp" />
-
-    <TextView
-        android:id="@+id/text_motivation"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="Small steps now, better score tonight."
-        android:textColor="#0F172A"
-        android:textSize="11sp"
-        android:textStyle="bold" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="horizontal">
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:layout_marginTop="12dp"
+            android:background="@drawable/itmain_widget_focus_card"
+            android:orientation="vertical"
+            android:padding="14dp">
 
             <TextView
-                android:id="@+id/text_water_label"
-                android:layout_width="wrap_content"
+                android:id="@+id/text_subtitle"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Hydration"
-                android:textColor="#334155"
-                android:textSize="10sp" />
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Latest lab: No labs yet"
+                android:textColor="#5C7268"
+                android:textSize="10sp"
+                android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/text_water_value"
+                android:id="@+id/text_motivation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:text="Next action: keep your healthy day moving"
+                android:textColor="#173629"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/text_score"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="0/3000 mL"
-                android:textColor="#0369A1"
-                android:textSize="13sp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/itmain_widget_chip"
+                android:paddingLeft="10dp"
+                android:paddingTop="5dp"
+                android:paddingRight="10dp"
+                android:paddingBottom="5dp"
+                android:text="Score: 0%"
+                android:textColor="#355248"
+                android:textSize="10sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="12dp"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/itmain_widget_stat_card"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:id="@+id/text_water_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Hydration"
+                    android:textColor="#678377"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/text_water_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="0/3000 mL"
+                    android:textColor="#146D97"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <ProgressBar
+                    android:id="@+id/progress_hydration"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:layout_marginTop="10dp"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressBackgroundTint="#DCEAF1"
+                    android:progressTint="#1790C7" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/itmain_widget_stat_card"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:id="@+id/text_tasks_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Meds today"
+                    android:textColor="#678377"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/text_tasks_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="0/0"
+                    android:textColor="#1F7A53"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Quick adherence view"
+                    android:textColor="#8AA095"
+                    android:textSize="10sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/text_tasks_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tasks"
-                android:textColor="#334155"
-                android:textSize="10sp" />
+                android:id="@+id/btn_add_water"
+                android:layout_width="0dp"
+                android:layout_height="42dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/itmain_widget_secondary_action"
+                android:gravity="center"
+                android:paddingHorizontal="8dp"
+                android:text="+250 mL"
+                android:textColor="#155C78"
+                android:textSize="11sp"
+                android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/text_tasks_value"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="0/4"
-                android:textColor="#166534"
-                android:textSize="13sp"
+                android:id="@+id/btn_mark_task"
+                android:layout_width="0dp"
+                android:layout_height="42dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/itmain_widget_primary_action"
+                android:gravity="center"
+                android:paddingHorizontal="8dp"
+                android:text="Done Task"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
-
-    <ProgressBar
-        android:id="@+id/progress_hydration"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="5dp"
-        android:layout_marginTop="7dp"
-        android:max="100"
-        android:progress="0"
-        android:progressTint="#0EA5E9" />
-
-    <TextView
-        android:id="@+id/text_score"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:gravity="end"
-        android:text="Score: 0%"
-        android:textColor="#334155"
-        android:textSize="10sp" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="7dp"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/btn_add_water"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="6dp"
-            android:background="#E0F2FE"
-            android:gravity="center"
-            android:paddingHorizontal="8dp"
-            android:text="+250 mL"
-            android:textColor="#075985"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/btn_mark_task"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:layout_weight="1"
-            android:background="#DCFCE7"
-            android:gravity="center"
-            android:paddingHorizontal="8dp"
-            android:text="Done Task"
-            android:textColor="#166534"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-</LinearLayout>
+</FrameLayout>

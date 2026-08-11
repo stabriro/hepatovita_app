@@ -1,12 +1,16 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 class LocalNotificationService {
   LocalNotificationService._();
 
+  static const _kBadgeCountKey = 'notification_badge_count_v1';
+
   static final LocalNotificationService instance = LocalNotificationService._();
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   bool _timezoneInitialized = false;
 
   Future<void> init() async {
@@ -25,22 +29,21 @@ class LocalNotificationService {
 
     await _plugin.initialize(settings);
 
+    await clearBadgeCount();
+
     await _plugin
         .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
 
     await _plugin
         .resolvePlatformSpecificImplementation<
-          IOSFlutterLocalNotificationsPlugin
-        >()
+            IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
 
     await _plugin
         .resolvePlatformSpecificImplementation<
-          MacOSFlutterLocalNotificationsPlugin
-        >()
+            MacOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
@@ -57,17 +60,21 @@ class LocalNotificationService {
     required String title,
     required String body,
   }) async {
-    const android = AndroidNotificationDetails(
+    final badgeCount = await _incrementBadgeCount();
+
+    final android = AndroidNotificationDetails(
       'critical_lab_alerts',
       'Critical Lab Alerts',
       channelDescription: 'High-severity biomarker risk alerts',
       importance: Importance.max,
       priority: Priority.high,
+      number: badgeCount,
+      channelShowBadge: true,
     );
-    const darwin = DarwinNotificationDetails();
+    final darwin = DarwinNotificationDetails(badgeNumber: badgeCount);
     const linux = LinuxNotificationDetails();
 
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: android,
       iOS: darwin,
       macOS: darwin,
@@ -82,17 +89,21 @@ class LocalNotificationService {
     required String title,
     required String body,
   }) async {
-    const android = AndroidNotificationDetails(
+    final badgeCount = await _incrementBadgeCount();
+
+    final android = AndroidNotificationDetails(
       'smart_health_reminders',
       'Smart Health Reminders',
       channelDescription: 'Adaptive reminders based on daily adherence',
       importance: Importance.high,
       priority: Priority.high,
+      number: badgeCount,
+      channelShowBadge: true,
     );
-    const darwin = DarwinNotificationDetails();
+    final darwin = DarwinNotificationDetails(badgeNumber: badgeCount);
     const linux = LinuxNotificationDetails();
 
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: android,
       iOS: darwin,
       macOS: darwin,
@@ -100,6 +111,49 @@ class LocalNotificationService {
     );
 
     await _plugin.show(id, title, body, details);
+  }
+
+  Future<void> scheduleSmartReminderAt({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledAt,
+  }) async {
+    _ensureTimezoneInitialized();
+
+    final badgeCount = await _nextBadgeCountHint();
+
+    final android = AndroidNotificationDetails(
+      'smart_health_reminders',
+      'Smart Health Reminders',
+      channelDescription: 'Adaptive reminders based on daily adherence',
+      importance: Importance.high,
+      priority: Priority.high,
+      number: badgeCount,
+      channelShowBadge: true,
+    );
+    final darwin = DarwinNotificationDetails(badgeNumber: badgeCount);
+    const linux = LinuxNotificationDetails();
+
+    final details = NotificationDetails(
+      android: android,
+      iOS: darwin,
+      macOS: darwin,
+      linux: linux,
+    );
+
+    final zonedDate = tz.TZDateTime.from(scheduledAt, tz.local);
+
+    await _plugin.zonedSchedule(
+      id,
+      title,
+      body,
+      zonedDate,
+      details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
   }
 
   Future<void> scheduleDailyMedicationReminder({
@@ -111,17 +165,21 @@ class LocalNotificationService {
   }) async {
     _ensureTimezoneInitialized();
 
-    const android = AndroidNotificationDetails(
+    final badgeCount = await _nextBadgeCountHint();
+
+    final android = AndroidNotificationDetails(
       'medication_daily_reminders',
       'Medication Daily Reminders',
       channelDescription: 'Scheduled reminders for medication doses',
       importance: Importance.high,
       priority: Priority.high,
+      number: badgeCount,
+      channelShowBadge: true,
     );
-    const darwin = DarwinNotificationDetails();
+    final darwin = DarwinNotificationDetails(badgeNumber: badgeCount);
     const linux = LinuxNotificationDetails();
 
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: android,
       iOS: darwin,
       macOS: darwin,
@@ -145,6 +203,24 @@ class LocalNotificationService {
 
   Future<void> cancelScheduledNotification(int id) async {
     await _plugin.cancel(id);
+  }
+
+  Future<void> clearBadgeCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kBadgeCountKey, 0);
+  }
+
+  Future<int> _incrementBadgeCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    final nextCount = (prefs.getInt(_kBadgeCountKey) ?? 0) + 1;
+    await prefs.setInt(_kBadgeCountKey, nextCount);
+
+    return nextCount;
+  }
+
+  Future<int> _nextBadgeCountHint() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getInt(_kBadgeCountKey) ?? 0) + 1;
   }
 
   tz.TZDateTime _nextInstanceOfTime({required int hour, required int minute}) {

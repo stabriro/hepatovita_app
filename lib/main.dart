@@ -436,6 +436,8 @@ class _ItmainAppState extends State<ItmainApp> with WidgetsBindingObserver {
     _lastLifecycleState = state;
 
     if (state == AppLifecycleState.resumed) {
+      unawaited(LocalNotificationService.instance.clearBadgeCount());
+
       if (previous == null || previous == AppLifecycleState.resumed) {
         return;
       }
@@ -1210,6 +1212,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   static const _kReminderChecklist = 'checklist';
   static const _kReminderLowScore = 'low_score';
   static const _kReminderLabsFollowUp = 'labs_follow_up';
+  static const _kReminderHydrationId = 401;
+  static const _kReminderChecklistId = 402;
+  static const _kReminderLowScoreId = 403;
+  static const _kReminderLabsFollowUpId = 404;
 
   int _currentTabIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -1349,8 +1355,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       return;
     }
 
+    final isAr = widget.lang == 'ar';
+
     await HomeWidgetSyncService.syncDashboardSnapshot(
-      isAr: widget.lang == 'ar',
+      isAr: isAr,
       waterAmount: _dashboardViewModel.waterAmount,
       waterGoal: _dashboardViewModel.waterGoal,
       greenTeaCount: _dashboardViewModel.greenTeaCount,
@@ -1360,6 +1368,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       sun15: _dashboardViewModel.sun15,
       lowFatDay: _dashboardViewModel.lowFatDay,
       score: _dashboardViewModel.score,
+      medicationTakenCount: _takenMedicationCountForToday(),
+      medicationTotalCount: _enabledMedicationCountForToday(),
+      latestLabText: _buildHomeWidgetLatestLabText(isAr),
+      nextActionText: _buildHomeWidgetNextActionText(isAr),
     );
   }
 
@@ -1424,6 +1436,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   void _requestSmartReminderEvaluation() {
     unawaited(_evaluateSmartReminders());
+    unawaited(_rescheduleSmartReminders());
   }
 
   Future<void> _evaluateSmartReminders() async {
@@ -1443,7 +1456,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         await _maybeSendSmartReminder(
           key: _kReminderHydration,
           stamp: dayStamp,
-          id: 401,
+          id: _kReminderHydrationId,
           title: l10n.tr('smart_reminder_title'),
           body: l10n.tr('smart_reminder_hydration'),
         );
@@ -1453,7 +1466,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         await _maybeSendSmartReminder(
           key: _kReminderChecklist,
           stamp: dayStamp,
-          id: 402,
+          id: _kReminderChecklistId,
           title: l10n.tr('smart_reminder_title'),
           body: l10n.tr('smart_reminder_checklist'),
         );
@@ -1463,7 +1476,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         await _maybeSendSmartReminder(
           key: _kReminderLowScore,
           stamp: dayStamp,
-          id: 403,
+          id: _kReminderLowScoreId,
           title: l10n.tr('smart_reminder_title'),
           body: l10n.tr('smart_reminder_low_score'),
         );
@@ -1474,7 +1487,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         await _maybeSendSmartReminder(
           key: _kReminderLabsFollowUp,
           stamp: _weekStamp(now),
-          id: 404,
+          id: _kReminderLabsFollowUpId,
           title: l10n.tr('smart_reminder_title'),
           body: l10n.tr('smart_reminder_labs_follow_up'),
         );
@@ -1502,6 +1515,96 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       body: body,
     );
     await _appSettingsService.setSmartReminderStamp(key, stamp);
+  }
+
+  Future<void> _rescheduleSmartReminders() async {
+    if (!_notificationsEnabled ||
+        !(Platform.isAndroid ||
+            Platform.isIOS ||
+            Platform.isMacOS ||
+            Platform.isLinux)) {
+      await _cancelSmartReminderSchedules();
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context);
+    final now = DateTime.now();
+
+    await _cancelSmartReminderSchedules();
+
+    if (_dashboardViewModel.waterAmount <
+        (_dashboardViewModel.waterGoal * 0.45).round()) {
+      final scheduled = _nextReminderDate(now, hour: 11, minute: 0);
+      await LocalNotificationService.instance.scheduleSmartReminderAt(
+        id: _kReminderHydrationId,
+        title: l10n.tr('smart_reminder_title'),
+        body: l10n.tr('smart_reminder_hydration'),
+        scheduledAt: scheduled,
+      );
+    }
+
+    if (_labs.isNotEmpty && _checklistDoneCount() <= 2) {
+      final scheduled = _nextReminderDate(now, hour: 18, minute: 0);
+      await LocalNotificationService.instance.scheduleSmartReminderAt(
+        id: _kReminderChecklistId,
+        title: l10n.tr('smart_reminder_title'),
+        body: l10n.tr('smart_reminder_checklist'),
+        scheduledAt: scheduled,
+      );
+    }
+
+    if (_dashboardViewModel.score < 60) {
+      final scheduled = _nextReminderDate(now, hour: 20, minute: 0);
+      await LocalNotificationService.instance.scheduleSmartReminderAt(
+        id: _kReminderLowScoreId,
+        title: l10n.tr('smart_reminder_title'),
+        body: l10n.tr('smart_reminder_low_score'),
+        scheduledAt: scheduled,
+      );
+    }
+
+    final latestLabDate = _latestLabRecordDate();
+    if (latestLabDate != null) {
+      final threshold = DateTime(
+        latestLabDate.year,
+        latestLabDate.month,
+        latestLabDate.day,
+        9,
+      ).add(const Duration(days: 14));
+      final scheduled = threshold.isAfter(now)
+          ? threshold
+          : now.add(const Duration(minutes: 2));
+      await LocalNotificationService.instance.scheduleSmartReminderAt(
+        id: _kReminderLabsFollowUpId,
+        title: l10n.tr('smart_reminder_title'),
+        body: l10n.tr('smart_reminder_labs_follow_up'),
+        scheduledAt: scheduled,
+      );
+    }
+  }
+
+  Future<void> _cancelSmartReminderSchedules() async {
+    await LocalNotificationService.instance.cancelScheduledNotification(
+      _kReminderHydrationId,
+    );
+    await LocalNotificationService.instance.cancelScheduledNotification(
+      _kReminderChecklistId,
+    );
+    await LocalNotificationService.instance.cancelScheduledNotification(
+      _kReminderLowScoreId,
+    );
+    await LocalNotificationService.instance.cancelScheduledNotification(
+      _kReminderLabsFollowUpId,
+    );
+  }
+
+  DateTime _nextReminderDate(DateTime now,
+      {required int hour, required int minute}) {
+    var scheduled = DateTime(now.year, now.month, now.day, hour, minute);
+    if (!scheduled.isAfter(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+    return scheduled;
   }
 
   int _checklistDoneCount() {
@@ -2272,7 +2375,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   List<LabAlertUiModel> _generateLabAlerts(AppLocalizations l10n) {
     final domainLabs = _labs.map(_toLabEntity).toList();
     final domainHistoryByMetric = _toDomainHistoryByMetric();
-
     final domainAlerts = _generateLabAlertsUseCase(
       labs: domainLabs,
       historyByMetric: domainHistoryByMetric,
@@ -2973,6 +3075,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       _requestSmartReminderEvaluation();
       await _scheduleMedicationReminders(_medications);
     } else {
+      await _cancelSmartReminderSchedules();
       await _cancelMedicationReminders(_medications);
     }
   }
@@ -3771,6 +3874,109 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     return '$valueText $unit';
   }
 
+  int _enabledMedicationCountForToday() {
+    return _medications.where((med) => med.enabled).length;
+  }
+
+  int _takenMedicationCountForToday() {
+    final today = _todayKey();
+    return _medications
+        .where((med) => med.enabled && med.takenDayKey == today)
+        .length;
+  }
+
+  LabEntry? _latestImportantLab() {
+    if (_labs.isEmpty) {
+      return null;
+    }
+
+    final abnormal = _labs.where((lab) => lab.status != 'Normal').toList();
+    final source = abnormal.isNotEmpty ? abnormal : List<LabEntry>.from(_labs);
+    source.sort((a, b) {
+      final aDate =
+          _parseLabDate(a.date) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate =
+          _parseLabDate(b.date) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bDate.compareTo(aDate);
+    });
+    return source.first;
+  }
+
+  String _buildHomeWidgetLatestLabText(bool isAr) {
+    final lab = _latestImportantLab();
+    if (lab == null) {
+      return isAr ? 'لا توجد تحاليل بعد' : 'No labs yet';
+    }
+
+    final status = _localizedLabStatus(lab.status, isAr);
+    return '${lab.metric}: ${_formatLabValue(lab)} • $status';
+  }
+
+  String _buildHomeWidgetNextActionText(bool isAr) {
+    final totalMeds = _enabledMedicationCountForToday();
+    final takenMeds = _takenMedicationCountForToday();
+    if (totalMeds > 0 && takenMeds < totalMeds) {
+      return isAr
+          ? 'راجع دواء اليوم التالي وخذه إذا حان وقته'
+          : 'Check the next due medication and take it if it is time';
+    }
+
+    final hydrationGap =
+        _dashboardViewModel.waterGoal - _dashboardViewModel.waterAmount;
+    if (hydrationGap >= 250) {
+      return isAr
+          ? 'أضف 250 مل ماء الآن لرفع الترطيب'
+          : 'Add 250 mL of water now to lift hydration';
+    }
+
+    if (!_dashboardViewModel.chkVitD) {
+      return isAr
+          ? 'أكمل مهمة فيتامين د اليوم'
+          : 'Complete the vitamin D task today';
+    }
+    if (!_dashboardViewModel.walk30) {
+      return isAr
+          ? 'امشِ 30 دقيقة لرفع نتيجتك'
+          : 'Take a 30-minute walk to improve your score';
+    }
+    if (!_dashboardViewModel.sun15) {
+      return isAr
+          ? 'أضف 15 دقيقة شمس إذا كان مناسبًا'
+          : 'Add 15 minutes of sun if appropriate';
+    }
+    if (!_dashboardViewModel.lowFatDay) {
+      return isAr
+          ? 'اختر وجبة أقل دهونًا لبقية اليوم'
+          : 'Choose a lower-fat meal for the rest of the day';
+    }
+    if (_labs.isEmpty) {
+      return isAr
+          ? 'أضف أول نتيجة تحليل لبناء خطك الصحي'
+          : 'Add your first lab result to build your health baseline';
+    }
+
+    return isAr
+        ? 'حافظ على الإيقاع الحالي وواصل المتابعة'
+        : 'Keep the current momentum going';
+  }
+
+  String _localizedLabStatus(String status, bool isAr) {
+    if (!isAr) {
+      return status;
+    }
+
+    switch (status) {
+      case 'Normal':
+        return 'طبيعي';
+      case 'High':
+        return 'مرتفع';
+      case 'Low':
+        return 'منخفض';
+      default:
+        return 'غير واضح';
+    }
+  }
+
   void _goToTab(int index) {
     setState(() {
       _currentTabIndex = index;
@@ -3886,6 +4092,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           .map((e) => e.toString())
           .toList()),
       source: (raw['source'] ?? 'local_fallback').toString(),
+      isShoppingMode: raw['is_shopping_mode'] == true,
+      shoppingVerdict: (raw['shopping_verdict'] ?? '').toString(),
+      shoppingHeadline: (raw['shopping_headline'] ?? '').toString(),
+      shoppingFlags:
+          ((raw['shopping_flags'] as List<dynamic>? ?? const <dynamic>[])
+              .map((e) => e.toString())
+              .toList()),
+      additivesCount: (raw['additives_count'] as num?)?.toInt(),
     );
   }
 

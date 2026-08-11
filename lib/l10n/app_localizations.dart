@@ -134,6 +134,9 @@ class AppLocalizations {
       'nutrient_sodium': 'Sodium',
       'dynamic_analysis_free_api': 'Nutrition database lookup (free source)',
       'local_fallback_analysis': 'Local nutrition lookup',
+      'shopping_scanner_title': 'Shelf choice verdict',
+      'shopping_signal_label': 'Signal',
+      'shopping_additives_label': 'Additives',
       'meal_analyzer_suggestions_title': 'General suggestions',
       'meal_analyzer_educational_note':
           'This result is for nutrition education only and does not replace medical advice, diagnosis, or a clinician review.',
@@ -426,6 +429,9 @@ class AppLocalizations {
       'nutrient_sodium': 'صوديوم',
       'dynamic_analysis_free_api': 'بحث في قاعدة غذائية (مصدر مجاني)',
       'local_fallback_analysis': 'بحث غذائي محلي',
+      'shopping_scanner_title': 'حكم سريع للمنتج',
+      'shopping_signal_label': 'إشارة',
+      'shopping_additives_label': 'عدد الإضافات',
       'meal_analyzer_suggestions_title': 'اقتراحات عامة',
       'meal_analyzer_educational_note':
           'هذه النتيجة للتثقيف الغذائي فقط ولا تغني عن الرأي الطبي أو التشخيص أو مراجعة الطبيب.',

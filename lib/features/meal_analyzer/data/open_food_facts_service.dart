@@ -13,6 +13,7 @@ class MealNutrients {
   final double? saturatedFatPer100g;
   final double? sugarPer100g;
   final double? sodiumMgPer100g;
+  final int? additivesCount;
 
   const MealNutrients({
     required this.displayName,
@@ -22,6 +23,7 @@ class MealNutrients {
     this.saturatedFatPer100g,
     this.sugarPer100g,
     this.sodiumMgPer100g,
+    this.additivesCount,
   });
 }
 
@@ -192,13 +194,13 @@ class OpenFoodFactsService {
     final fat = _toDouble(nutrimentsRaw['fat_100g']);
     final saturatedFat = _toDouble(nutrimentsRaw['saturated-fat_100g']);
     final sugar = _toDouble(nutrimentsRaw['sugars_100g']);
+    final additivesCount = _toInt(product['additives_n']);
 
     final sodiumFromSodium = _toDouble(nutrimentsRaw['sodium_100g']);
     final salt = _toDouble(nutrimentsRaw['salt_100g']);
     final sodiumFromSalt = salt == null ? null : salt * 1000 * 0.393;
-    final sodiumMg = sodiumFromSodium != null
-        ? sodiumFromSodium * 1000
-        : sodiumFromSalt;
+    final sodiumMg =
+        sodiumFromSodium != null ? sodiumFromSodium * 1000 : sodiumFromSalt;
 
     if (calories == null && protein == null && fat == null) {
       return null;
@@ -206,13 +208,15 @@ class OpenFoodFactsService {
 
     final name = (product['product_name'] as String?)?.trim();
     return MealNutrients(
-      displayName: (name == null || name.isEmpty) ? 'Open Food Facts Result' : name,
+      displayName:
+          (name == null || name.isEmpty) ? 'Open Food Facts Result' : name,
       caloriesPer100g: calories,
       proteinPer100g: protein,
       fatPer100g: fat,
       saturatedFatPer100g: saturatedFat,
       sugarPer100g: sugar,
       sodiumMgPer100g: sodiumMg,
+      additivesCount: additivesCount,
     );
   }
 
@@ -225,6 +229,22 @@ class OpenFoodFactsService {
     }
     if (value is String) {
       return double.tryParse(value);
+    }
+    return null;
+  }
+
+  int? _toInt(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.tryParse(value);
     }
     return null;
   }
