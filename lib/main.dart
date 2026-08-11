@@ -60,11 +60,11 @@ class ItmainApp extends StatefulWidget {
   State<ItmainApp> createState() => _ItmainAppState();
 }
 
-class _ItmainAppState extends State<ItmainApp>
-    with WidgetsBindingObserver {
+class _ItmainAppState extends State<ItmainApp> with WidgetsBindingObserver {
   static const _kSelectedLanguageCode = 'selected_language_code';
   static const _kHasSelectedLanguage = 'has_selected_language';
-  final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> _rootNavigatorKey =
+      GlobalKey<NavigatorState>();
 
   final AppLockService _appLockService = AppLockService.instance;
   Locale _locale = const Locale('en');
@@ -91,7 +91,8 @@ class _ItmainAppState extends State<ItmainApp>
     final prefs = await SharedPreferences.getInstance();
     final savedLangCode = prefs.getString(_kSelectedLanguageCode);
     final hasSelectedLanguage =
-        (prefs.getBool(_kHasSelectedLanguage) ?? false) || savedLangCode != null;
+        (prefs.getBool(_kHasSelectedLanguage) ?? false) ||
+            savedLangCode != null;
     final hasPin = await _appLockService.hasPin();
     final biometricEnabled = await _appLockService.isBiometricEnabled();
     final canUseBiometrics = await _appLockService.canUseBiometrics();
@@ -115,7 +116,8 @@ class _ItmainAppState extends State<ItmainApp>
     });
 
     _splashTimer?.cancel();
-    _splashTimer = Timer(const Duration(milliseconds: 2600), _handleSplashContinue);
+    _splashTimer =
+        Timer(const Duration(milliseconds: 2600), _handleSplashContinue);
   }
 
   Future<void> _handleSplashContinue() async {
@@ -295,7 +297,8 @@ class _ItmainAppState extends State<ItmainApp>
                 children: [
                   Text(
                     l10n.tr('recover_with_code_hint'),
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    style:
+                        const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 10),
                   TextField(
@@ -322,7 +325,8 @@ class _ItmainAppState extends State<ItmainApp>
                 ElevatedButton(
                   onPressed: () async {
                     final candidate = codeController.text.trim().toUpperCase();
-                    final ok = await _appLockService.verifyRecoveryCode(candidate);
+                    final ok =
+                        await _appLockService.verifyRecoveryCode(candidate);
                     if (!ok) {
                       setInnerState(() {
                         localError = l10n.tr('recovery_code_invalid');
@@ -437,7 +441,8 @@ class _ItmainAppState extends State<ItmainApp>
       }
 
       final unlockedAt = _lastSuccessfulUnlockAt;
-      if (unlockedAt != null && DateTime.now().difference(unlockedAt) < const Duration(seconds: 12)) {
+      if (unlockedAt != null &&
+          DateTime.now().difference(unlockedAt) < const Duration(seconds: 12)) {
         return;
       }
 
@@ -512,40 +517,41 @@ class _ItmainAppState extends State<ItmainApp>
                   isLoadingPhase: true,
                 )
               : _showSplash
-              ? AppSplashScreen(
-                  key: const ValueKey('splash'),
-                  isAr: isAr,
-                  onContinue: _handleSplashContinue,
-                  isLoadingPhase: false,
-                )
-              : _needsLanguageSetup
-              ? LanguageSetupScreen(
-                  key: const ValueKey('language_setup'),
-                  onLanguageSelected: _completeLanguageSelection,
-                )
-              : _needsPinSetup
-              ? SecurityPinSetupScreen(
-                  key: const ValueKey('pin_setup'),
-                  isAr: isAr,
-                  canUseBiometric: _biometricAvailable,
-                  onPinCreated: _completePinSetup,
-                )
-              : _isLocked
-              ? SecurityUnlockScreen(
-                  key: const ValueKey('pin_unlock'),
-                  isAr: isAr,
-                  enableBiometric: _biometricAllowed,
-                  onUnlockWithPin: _unlockWithPin,
-                  onUnlockWithBiometric: _unlockWithBiometric,
-                  onForgotPin: _recoverForgotPin,
-                )
-              : MainDashboardScreen(
-                  key: const ValueKey('main_dashboard'),
-                  lang: _locale.languageCode,
-                  onLanguageChanged: (lang) => _toggleLanguage(lang),
-                  onLockRequested: _lockNow,
-                  onExternalIntentStarted: _skipNextResumeLock,
-                ),
+                  ? AppSplashScreen(
+                      key: const ValueKey('splash'),
+                      isAr: isAr,
+                      onContinue: _handleSplashContinue,
+                      isLoadingPhase: false,
+                    )
+                  : _needsLanguageSetup
+                      ? LanguageSetupScreen(
+                          key: const ValueKey('language_setup'),
+                          onLanguageSelected: _completeLanguageSelection,
+                        )
+                      : _needsPinSetup
+                          ? SecurityPinSetupScreen(
+                              key: const ValueKey('pin_setup'),
+                              isAr: isAr,
+                              canUseBiometric: _biometricAvailable,
+                              onPinCreated: _completePinSetup,
+                            )
+                          : _isLocked
+                              ? SecurityUnlockScreen(
+                                  key: const ValueKey('pin_unlock'),
+                                  isAr: isAr,
+                                  enableBiometric: _biometricAllowed,
+                                  onUnlockWithPin: _unlockWithPin,
+                                  onUnlockWithBiometric: _unlockWithBiometric,
+                                  onForgotPin: _recoverForgotPin,
+                                )
+                              : MainDashboardScreen(
+                                  key: const ValueKey('main_dashboard'),
+                                  lang: _locale.languageCode,
+                                  onLanguageChanged: (lang) =>
+                                      _toggleLanguage(lang),
+                                  onLockRequested: _lockNow,
+                                  onExternalIntentStarted: _skipNextResumeLock,
+                                ),
         ),
       ),
     );
@@ -555,8 +561,8 @@ class _ItmainAppState extends State<ItmainApp>
 class SecurityPinSetupScreen extends StatefulWidget {
   final bool isAr;
   final bool canUseBiometric;
-  final Future<void> Function({required String pin, required bool enableBiometric})
-      onPinCreated;
+  final Future<void> Function(
+      {required String pin, required bool enableBiometric}) onPinCreated;
 
   const SecurityPinSetupScreen({
     super.key,
@@ -917,7 +923,8 @@ class LanguageSetupScreen extends StatelessWidget {
                       const Text(
                         'You can change language later from Profile settings.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        style:
+                            TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       ),
                       const SizedBox(height: 18),
                       ElevatedButton(
@@ -930,7 +937,8 @@ class LanguageSetupScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text('English', style: TextStyle(fontWeight: FontWeight.w700)),
+                        child: const Text('English',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
                       ),
                       const SizedBox(height: 10),
                       OutlinedButton(
@@ -943,7 +951,8 @@ class LanguageSetupScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text('العربية', style: TextStyle(fontWeight: FontWeight.w700)),
+                        child: const Text('العربية',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -1004,7 +1013,8 @@ class AppSplashScreen extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -1070,12 +1080,14 @@ class AppSplashScreen extends StatelessWidget {
                       children: [
                         _SplashTag(label: l10n.tr('splash_tag_dynamic_labs')),
                         _SplashTag(label: l10n.tr('splash_tag_daily_tracking')),
-                        _SplashTag(label: l10n.tr('splash_tag_encrypted_backup')),
+                        _SplashTag(
+                            label: l10n.tr('splash_tag_encrypted_backup')),
                       ],
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(16),
@@ -1088,7 +1100,8 @@ class AppSplashScreen extends StatelessWidget {
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.4,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -1224,17 +1237,17 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   final AppSettingsService _appSettingsService = AppSettingsService.instance;
   final MedicationSchedulerService _medicationSchedulerService =
       MedicationSchedulerService();
-    final WeeklyNutritionRuleEngine _weeklyNutritionRuleEngine =
+  final WeeklyNutritionRuleEngine _weeklyNutritionRuleEngine =
       WeeklyNutritionRuleEngine();
-    final WeeklyNutritionPlanStorage _weeklyNutritionPlanStorage =
+  final WeeklyNutritionPlanStorage _weeklyNutritionPlanStorage =
       WeeklyNutritionPlanStorage();
-      final FreeMealDbService _freeMealDbService = FreeMealDbService();
+  final FreeMealDbService _freeMealDbService = FreeMealDbService();
   late final DashboardActionsCoordinator _dashboardActionsCoordinator =
       AppDi.provideDashboardActionsCoordinator(
-        dashboardViewModel: _dashboardViewModel,
-        mealAnalyzerViewModel: _mealAnalyzerViewModel,
-        persistenceCoordinator: _persistenceCoordinator,
-      );
+    dashboardViewModel: _dashboardViewModel,
+    mealAnalyzerViewModel: _mealAnalyzerViewModel,
+    persistenceCoordinator: _persistenceCoordinator,
+  );
   final EvaluateLabGoalUseCase _evaluateLabGoal = EvaluateLabGoalUseCase();
   final LabAlertPresenter _labAlertPresenter = const LabAlertPresenter();
   late final GenerateLabAlertsUseCase _generateLabAlertsUseCase =
@@ -1504,7 +1517,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     DateTime? latest;
     for (final entries in _labHistoryByMetric.values) {
       for (final entry in entries) {
-        final candidate = _parseLabDate(entry.date, fallbackIso: entry.createdAt);
+        final candidate =
+            _parseLabDate(entry.date, fallbackIso: entry.createdAt);
         if (candidate == null) {
           continue;
         }
@@ -1713,7 +1727,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Future<void> _scheduleMedicationReminders(
     List<MedicationSchedule> items,
   ) async {
-    if (!(Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isLinux)) {
+    if (!(Platform.isAndroid ||
+        Platform.isIOS ||
+        Platform.isMacOS ||
+        Platform.isLinux)) {
       return;
     }
 
@@ -1740,7 +1757,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Future<void> _cancelMedicationReminders(
     List<MedicationSchedule> items,
   ) async {
-    if (!(Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isLinux)) {
+    if (!(Platform.isAndroid ||
+        Platform.isIOS ||
+        Platform.isMacOS ||
+        Platform.isLinux)) {
       return;
     }
 
@@ -1833,10 +1853,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         ? null
         : _medications.firstWhere((m) => m.id == medicationId);
 
-    final nameController =
-        TextEditingController(text: existing?.name ?? '');
-    final doseController =
-        TextEditingController(text: existing?.dose ?? '');
+    final nameController = TextEditingController(text: existing?.name ?? '');
+    final doseController = TextEditingController(text: existing?.dose ?? '');
     TimeOfDay selectedTime = TimeOfDay(
       hour: existing?.hour ?? 8,
       minute: existing?.minute ?? 0,
@@ -1850,8 +1868,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             return AlertDialog(
               title: Text(
                 existing == null
-                  ? l10n.tr('med_add_medication')
-                  : l10n.tr('med_edit_medication'),
+                    ? l10n.tr('med_add_medication')
+                    : l10n.tr('med_edit_medication'),
               ),
               content: SingleChildScrollView(
                 child: Column(
@@ -1930,9 +1948,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                isAr
-                    ? 'الاسم والجرعة مطلوبان.'
-                    : 'Name and dose are required.',
+                isAr ? 'الاسم والجرعة مطلوبان.' : 'Name and dose are required.',
               ),
             ),
           );
@@ -1980,7 +1996,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
     final l10n = AppLocalizations.of(context);
     final criticalAlerts = _generateLabAlerts(l10n)
-      .where((a) => a.severity == LabAlertUiSeverity.critical)
+        .where((a) => a.severity == LabAlertUiSeverity.critical)
         .toList();
 
     if (criticalAlerts.isEmpty) {
@@ -2003,7 +2019,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       return;
     }
 
-    final popupText = l10n.tr('high_alert_popup', args: {'metric': nextAlert.metric});
+    final popupText =
+        l10n.tr('high_alert_popup', args: {'metric': nextAlert.metric});
 
     if (_notificationsEnabled) {
       final notificationId = alertKey.hashCode.abs() % 2147483647;
@@ -2065,7 +2082,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.tr('backup_saved_to', args: {'path': savedPath}))),
+        SnackBar(
+            content:
+                Text(l10n.tr('backup_saved_to', args: {'path': savedPath}))),
       );
     } catch (e) {
       if (_persistenceCoordinator.isUserCancelled(e)) {
@@ -2073,7 +2092,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.tr('backup_failed', args: {'error': '$e'}))),
+        SnackBar(
+            content: Text(l10n.tr('backup_failed', args: {'error': '$e'}))),
       );
     }
   }
@@ -2122,7 +2142,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.tr('restore_failed', args: {'error': '$e'}))),
+        SnackBar(
+            content: Text(l10n.tr('restore_failed', args: {'error': '$e'}))),
       );
     }
   }
@@ -2165,14 +2186,17 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.tr('pdf_report_saved_to', args: {'path': reportPath}))),
+        SnackBar(
+            content: Text(
+                l10n.tr('pdf_report_saved_to', args: {'path': reportPath}))),
       );
     } catch (e) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.tr('pdf_report_failed', args: {'error': '$e'}))),
+        SnackBar(
+            content: Text(l10n.tr('pdf_report_failed', args: {'error': '$e'}))),
       );
     }
   }
@@ -2226,8 +2250,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     final domainHistory =
         _labHistoryByMetric[lab.metric] ?? <domain.LabHistoryEntity>[];
 
-    final trend =
-        _generateLabAlertsUseCase.evaluateTrend(_toLabEntity(lab), domainHistory);
+    final trend = _generateLabAlertsUseCase.evaluateTrend(
+        _toLabEntity(lab), domainHistory);
 
     switch (trend) {
       case 'Improving':
@@ -2281,7 +2305,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Future<void> _upsertLabEntryFromImage() async {
     final l10n = AppLocalizations.of(context);
-    final source = await LabEntryFlowController.chooseImageSource(context, l10n);
+    final source =
+        await LabEntryFlowController.chooseImageSource(context, l10n);
     if (source == null) {
       return;
     }
@@ -2345,7 +2370,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   children: [
                     Text(
                       l10n.tr('labs_review_subtitle'),
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF475569)),
                     ),
                     const SizedBox(height: 10),
                     Flexible(
@@ -2366,7 +2392,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                             },
                             title: Text(
                               draft.metric,
-                              style: const TextStyle(fontWeight: FontWeight.w700),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700),
                             ),
                             subtitle: Text(
                               '${draft.value} ${draft.unit}  |  ${draft.date}${draft.refRange.isEmpty ? '' : '  |  ${draft.refRange}'}',
@@ -2375,7 +2402,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                               tooltip: l10n.tr('edit'),
                               icon: const Icon(Icons.edit_rounded),
                               onPressed: () async {
-                                final edited = await _editExtractedLabDraft(draft);
+                                final edited =
+                                    await _editExtractedLabDraft(draft);
                                 if (edited == null) {
                                   return;
                                 }
@@ -2436,28 +2464,34 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               children: [
                 TextField(
                   controller: metricController,
-                  decoration: InputDecoration(labelText: l10n.tr('labs_metric_label')),
+                  decoration:
+                      InputDecoration(labelText: l10n.tr('labs_metric_label')),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: valueController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(labelText: l10n.tr('labs_value_label')),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration:
+                      InputDecoration(labelText: l10n.tr('labs_value_label')),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: unitController,
-                  decoration: InputDecoration(labelText: l10n.tr('labs_unit_label')),
+                  decoration:
+                      InputDecoration(labelText: l10n.tr('labs_unit_label')),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: refRangeController,
-                  decoration: InputDecoration(labelText: l10n.tr('labs_ref_range_label')),
+                  decoration: InputDecoration(
+                      labelText: l10n.tr('labs_ref_range_label')),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: dateController,
-                  decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD or 3 Aug 2026)'),
+                  decoration: const InputDecoration(
+                      labelText: 'Date (YYYY-MM-DD or 3 Aug 2026)'),
                 ),
               ],
             ),
@@ -2543,9 +2577,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     });
     final existing = existingIndex == -1 ? null : _labs[existingIndex];
 
-    final resolvedUnit = draft.unit.trim().isEmpty
-        ? (existing?.unit ?? '')
-        : draft.unit.trim();
+    final resolvedUnit =
+        draft.unit.trim().isEmpty ? (existing?.unit ?? '') : draft.unit.trim();
     final resolvedRefRange = draft.refRange.trim().isEmpty
         ? (existing?.refRange ?? '')
         : draft.refRange.trim();
@@ -2556,7 +2589,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     final resolvedStatus = _autoStatusFromRange(parsedValue, resolvedRefRange);
 
     final updated = LabEntry(
-      id: existing?.id ?? '${DateTime.now().microsecondsSinceEpoch}_${metric.hashCode.abs()}',
+      id: existing?.id ??
+          '${DateTime.now().microsecondsSinceEpoch}_${metric.hashCode.abs()}',
       metric: metric,
       value: parsedValue,
       unit: resolvedUnit,
@@ -2575,20 +2609,30 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     final l10n = AppLocalizations.of(context);
     final existing = index == null ? null : _labs[index];
 
-    final metricController = TextEditingController(text: prefill?.metric ?? existing?.metric ?? '');
-    final valueController = TextEditingController(text: prefill?.value ?? existing?.value.toString() ?? '');
-    final unitController = TextEditingController(text: prefill?.unit ?? existing?.unit ?? '');
-    final refRangeController = TextEditingController(text: prefill?.refRange ?? existing?.refRange ?? '');
-    final dateController = TextEditingController(text: prefill?.date ?? existing?.date ?? DateTime.now().toIso8601String().split('T').first);
-    final targetController = TextEditingController(text: existing?.target ?? '');
-    final progressController = TextEditingController(text: ((existing?.progressVal ?? 0.5) * 100).round().toString());
+    final metricController =
+        TextEditingController(text: prefill?.metric ?? existing?.metric ?? '');
+    final valueController = TextEditingController(
+        text: prefill?.value ?? existing?.value.toString() ?? '');
+    final unitController =
+        TextEditingController(text: prefill?.unit ?? existing?.unit ?? '');
+    final refRangeController = TextEditingController(
+        text: prefill?.refRange ?? existing?.refRange ?? '');
+    final dateController = TextEditingController(
+        text: prefill?.date ??
+            existing?.date ??
+            DateTime.now().toIso8601String().split('T').first);
+    final targetController =
+        TextEditingController(text: existing?.target ?? '');
+    final progressController = TextEditingController(
+        text: ((existing?.progressVal ?? 0.5) * 100).round().toString());
     String editedStatus = existing?.status ?? 'Normal';
 
     final didSave = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(existing == null ? 'Add New Lab' : 'Update ${existing.metric}'),
+          title: Text(
+              existing == null ? 'Add New Lab' : 'Update ${existing.metric}'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2600,39 +2644,47 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 const SizedBox(height: 10),
                 TextField(
                   controller: valueController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   decoration: const InputDecoration(labelText: 'Value'),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: unitController,
-                  decoration: const InputDecoration(labelText: 'Unit (e.g. U/L)'),
+                  decoration:
+                      const InputDecoration(labelText: 'Unit (e.g. U/L)'),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: refRangeController,
-                  decoration: const InputDecoration(labelText: 'Reference Range'),
+                  decoration:
+                      const InputDecoration(labelText: 'Reference Range'),
                 ),
                 const SizedBox(height: 10),
                 Text(
                   l10n.tr('status_auto'),
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  style:
+                      const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: dateController,
-                  decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD or 3 Aug 2026)'),
+                  decoration: const InputDecoration(
+                      labelText: 'Date (YYYY-MM-DD or 3 Aug 2026)'),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: targetController,
-                  decoration: const InputDecoration(labelText: 'Target / Notes'),
+                  decoration:
+                      const InputDecoration(labelText: 'Target / Notes'),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: progressController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Progress % (0-100)'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration:
+                      const InputDecoration(labelText: 'Progress % (0-100)'),
                 ),
               ],
             ),
@@ -2654,27 +2706,35 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     if (didSave == true) {
       final metric = metricController.text.trim();
       if (metric.isNotEmpty) {
-        final parsedValue = double.tryParse(valueController.text.trim()) ?? (existing?.value ?? 0);
-        final progressPct = double.tryParse(progressController.text.trim()) ?? ((existing?.progressVal ?? 0.5) * 100);
+        final parsedValue = double.tryParse(valueController.text.trim()) ??
+            (existing?.value ?? 0);
+        final progressPct = double.tryParse(progressController.text.trim()) ??
+            ((existing?.progressVal ?? 0.5) * 100);
         final clampedProgress = (progressPct / 100).clamp(0.0, 1.0);
         final parsedDate = LabEntryFlowController.normalizeDateInput(
           dateController.text,
-          fallbackIso:
-              existing?.date ?? DateTime.now().toIso8601String().split('T').first,
+          fallbackIso: existing?.date ??
+              DateTime.now().toIso8601String().split('T').first,
         );
 
-        final resolvedRefRange = refRangeController.text.trim().isEmpty ? (existing?.refRange ?? '') : refRangeController.text.trim();
+        final resolvedRefRange = refRangeController.text.trim().isEmpty
+            ? (existing?.refRange ?? '')
+            : refRangeController.text.trim();
         editedStatus = _autoStatusFromRange(parsedValue, resolvedRefRange);
 
         final updated = LabEntry(
           id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
           metric: metric,
           value: parsedValue,
-          unit: unitController.text.trim().isEmpty ? (existing?.unit ?? '') : unitController.text.trim(),
+          unit: unitController.text.trim().isEmpty
+              ? (existing?.unit ?? '')
+              : unitController.text.trim(),
           refRange: resolvedRefRange,
           status: editedStatus,
           date: parsedDate,
-          target: targetController.text.trim().isEmpty ? (existing?.target ?? '') : targetController.text.trim(),
+          target: targetController.text.trim().isEmpty
+              ? (existing?.target ?? '')
+              : targetController.text.trim(),
           progressVal: clampedProgress,
         );
 
@@ -2706,7 +2766,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade700,
+                  foregroundColor: Colors.white),
               child: const Text('Delete'),
             ),
           ],
@@ -2722,7 +2784,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Future<void> _addLabResult(LabEntry lab) async {
     final l10n = AppLocalizations.of(context);
     final valueController = TextEditingController(text: lab.value.toString());
-    final dateController = TextEditingController(text: DateTime.now().toIso8601String().split('T').first);
+    final dateController = TextEditingController(
+        text: DateTime.now().toIso8601String().split('T').first);
     String editedStatus = lab.status;
 
     final didSave = await showDialog<bool>(
@@ -2735,7 +2798,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             children: [
               TextField(
                 controller: valueController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(labelText: 'Value (${lab.unit})'),
               ),
               const SizedBox(height: 10),
@@ -2746,7 +2810,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               const SizedBox(height: 10),
               TextField(
                 controller: dateController,
-                decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD or 3 Aug 2026)'),
+                decoration: const InputDecoration(
+                    labelText: 'Date (YYYY-MM-DD or 3 Aug 2026)'),
               ),
             ],
           ),
@@ -2765,7 +2830,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
 
     if (didSave == true) {
-      final parsedValue = double.tryParse(valueController.text.trim()) ?? lab.value;
+      final parsedValue =
+          double.tryParse(valueController.text.trim()) ?? lab.value;
       final parsedDate = LabEntryFlowController.normalizeDateInput(
         dateController.text,
         fallbackIso: DateTime.now().toIso8601String().split('T').first,
@@ -3110,7 +3176,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 _buildModernHeader(isAr),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 12.0),
                     child: Column(
                       children: [
                         _buildModernHeroScoreCard(score, isAr),
@@ -3172,37 +3239,242 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   Widget _buildAppDrawer(bool isAr) {
     final l10n = AppLocalizations.of(context);
+    const primaryTabs = <int>[0, 2, 4, 6];
+    const secondaryTabs = <int>[1, 3, 5];
+
     return Drawer(
+      width: 320,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
       child: SafeArea(
-        child: Column(
-          children: [
-            ListTile(
-              title: Text(
-                l10n.tr('drawer_navigation_title'),
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-              subtitle: Text(
-                l10n.tr('drawer_navigation_subtitle'),
-              ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                children: [
-                  _buildDrawerTabItem(index: 0, isAr: isAr),
-                  _buildDrawerTabItem(index: 2, isAr: isAr),
-                  _buildDrawerTabItem(index: 4, isAr: isAr),
-                  _buildDrawerTabItem(index: 6, isAr: isAr),
-                  const Divider(height: 20),
-                  _buildDrawerTabItem(index: 1, isAr: isAr),
-                  _buildDrawerTabItem(index: 3, isAr: isAr),
-                  _buildDrawerTabItem(index: 5, isAr: isAr),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFF7FBF8),
+                  Color(0xFFFFFFFF),
+                  Color(0xFFF0F6F2)
                 ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: const Color(0xFFE1ECE5)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x1A0F2E22),
+                  blurRadius: 28,
+                  offset: Offset(0, 12),
+                ),
+              ],
             ),
-          ],
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 12, 18),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF174535), Color(0xFF2B7257)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(30)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: isAr
+                        ? CrossAxisAlignment.end
+                        : CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.14),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.20)),
+                            ),
+                            child: const Icon(Icons.dashboard_customize_rounded,
+                                color: Colors.white),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            tooltip: MaterialLocalizations.of(context)
+                                .closeButtonTooltip,
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.close_rounded,
+                                color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        l10n.tr('drawer_navigation_title'),
+                        style: TextStyle(
+                          fontFamily: isAr ? 'Cairo' : 'Outfit',
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                        textAlign: isAr ? TextAlign.right : TextAlign.left,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        l10n.tr('drawer_navigation_subtitle'),
+                        style: const TextStyle(
+                          color: Color(0xFFD8E8DE),
+                          fontSize: 12,
+                          height: 1.35,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: isAr ? TextAlign.right : TextAlign.left,
+                      ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment:
+                            isAr ? WrapAlignment.end : WrapAlignment.start,
+                        children: [
+                          _buildDrawerInfoChip(
+                            icon: Icons.bolt_rounded,
+                            label: l10n.tr('drawer_quick_access_chip'),
+                          ),
+                          _buildDrawerInfoChip(
+                            icon: Icons.circle,
+                            label: _tabLabelForIndex(_currentTabIndex),
+                            color: _drawerAccentForIndex(_currentTabIndex),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+                    children: [
+                      _buildDrawerSection(
+                        title: l10n.tr('drawer_primary_section'),
+                        indices: primaryTabs,
+                        isAr: isAr,
+                      ),
+                      const SizedBox(height: 18),
+                      _buildDrawerSection(
+                        title: l10n.tr('drawer_secondary_section'),
+                        indices: secondaryTabs,
+                        isAr: isAr,
+                      ),
+                      const SizedBox(height: 18),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF4EE),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFD4E6D9)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF174535),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(Icons.swipe_rounded,
+                                  color: Colors.white, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                l10n.tr('drawer_footer_hint'),
+                                style: const TextStyle(
+                                  color: Color(0xFF244536),
+                                  fontSize: 12,
+                                  height: 1.35,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign:
+                                    isAr ? TextAlign.right : TextAlign.left,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerSection({
+    required String title,
+    required List<int> indices,
+    required bool isAr,
+  }) {
+    return Column(
+      crossAxisAlignment:
+          isAr ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF6B7C72),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.4,
+            ),
+            textAlign: isAr ? TextAlign.right : TextAlign.left,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ...indices.map(
+          (index) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _buildDrawerTabItem(index: index, isAr: isAr),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDrawerInfoChip({
+    required IconData icon,
+    required String label,
+    Color? color,
+  }) {
+    final chipColor = color ?? const Color(0xFF8FD3AA);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: chipColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+                color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
     );
   }
@@ -3211,14 +3483,112 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     required int index,
     required bool isAr,
   }) {
-    return ListTile(
-      leading: Icon(_tabIconForIndex(index)),
-      title: Text(_tabLabelForIndex(index)),
-      selected: _currentTabIndex == index,
-      onTap: () {
-        Navigator.of(context).pop();
-        _goToTab(index);
-      },
+    final l10n = AppLocalizations.of(context);
+    final selected = _currentTabIndex == index;
+    final accent = _drawerAccentForIndex(index);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () {
+          Navigator.of(context).pop();
+          _goToTab(index);
+        },
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: selected ? accent.withValues(alpha: 0.16) : Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: selected
+                  ? accent.withValues(alpha: 0.42)
+                  : const Color(0xFFE3ECE6),
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.14),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : const [],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: selected ? accent : const Color(0xFFF2F6F3),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(
+                  _tabIconForIndex(index),
+                  color: selected ? Colors.white : const Color(0xFF355244),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      isAr ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _tabLabelForIndex(index),
+                      textAlign: isAr ? TextAlign.right : TextAlign.left,
+                      style: TextStyle(
+                        color: const Color(0xFF173126),
+                        fontSize: 14,
+                        fontWeight:
+                            selected ? FontWeight.w800 : FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _tabDrawerHintForIndex(index),
+                      textAlign: isAr ? TextAlign.right : TextAlign.left,
+                      style: const TextStyle(
+                        color: Color(0xFF6B7C72),
+                        fontSize: 11,
+                        height: 1.3,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              if (selected)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    l10n.tr('drawer_active_badge'),
+                    style: TextStyle(
+                      color: accent,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                )
+              else
+                Icon(
+                  isAr
+                      ? Icons.arrow_back_ios_new_rounded
+                      : Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: const Color(0xFF8AA093),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -3310,7 +3680,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     final l10n = AppLocalizations.of(context);
     final tags = <DashboardHeroBiomarkerTag>[];
 
-    final liverLab = _findLatestLabByAliases(<String>['alt', 'sgpt', 'ast', 'sgot']);
+    final liverLab =
+        _findLatestLabByAliases(<String>['alt', 'sgpt', 'ast', 'sgot']);
     if (liverLab != null) {
       tags.add(
         DashboardHeroBiomarkerTag(
@@ -3321,7 +3692,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       );
     }
 
-    final vitaminDLab = _findLatestLabByAliases(<String>['vitamin d', '25-oh', '25 oh', 'd3']);
+    final vitaminDLab =
+        _findLatestLabByAliases(<String>['vitamin d', '25-oh', '25 oh', 'd3']);
     if (vitaminDLab != null) {
       tags.add(
         DashboardHeroBiomarkerTag(
@@ -3332,7 +3704,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       );
     }
 
-    final hemoglobinLab = _findLatestLabByAliases(<String>['hemoglobin', 'hgb']);
+    final hemoglobinLab =
+        _findLatestLabByAliases(<String>['hemoglobin', 'hgb']);
     if (hemoglobinLab != null) {
       tags.add(
         DashboardHeroBiomarkerTag(
@@ -3376,8 +3749,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     }
 
     matched.sort((a, b) {
-      final aDate = _parseLabDate(a.date) ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final bDate = _parseLabDate(b.date) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final aDate =
+          _parseLabDate(a.date) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate =
+          _parseLabDate(b.date) ?? DateTime.fromMillisecondsSinceEpoch(0);
       return bDate.compareTo(aDate);
     });
 
@@ -3443,6 +3818,49 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
   }
 
+  Color _drawerAccentForIndex(int index) {
+    switch (index) {
+      case 0:
+        return const Color(0xFF2E7D58);
+      case 1:
+        return const Color(0xFFC17F2C);
+      case 2:
+        return const Color(0xFF2C8F8B);
+      case 3:
+        return const Color(0xFF5E7CE2);
+      case 4:
+        return const Color(0xFF7A5AF8);
+      case 5:
+        return const Color(0xFFDA6C5C);
+      case 6:
+        return const Color(0xFF4353A3);
+      default:
+        return const Color(0xFF2E7D58);
+    }
+  }
+
+  String _tabDrawerHintForIndex(int index) {
+    final l10n = AppLocalizations.of(context);
+    switch (index) {
+      case 0:
+        return l10n.tr('drawer_hint_home');
+      case 1:
+        return l10n.tr('drawer_hint_meals');
+      case 2:
+        return l10n.tr('drawer_hint_labs');
+      case 3:
+        return l10n.tr('drawer_hint_education');
+      case 4:
+        return l10n.tr('drawer_hint_meds');
+      case 5:
+        return l10n.tr('drawer_hint_weekly_plan');
+      case 6:
+        return l10n.tr('drawer_hint_profile');
+      default:
+        return '';
+    }
+  }
+
   MealAnalysisUiModel? _toMealAnalysisUiModel() {
     final raw = _mealAnalyzerViewModel.analyzedResult;
     if (raw == null) {
@@ -3464,7 +3882,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       caveat: (raw['caveat'] ?? '').toString(),
       protein: (raw['protein'] ?? '').toString(),
       fat: (raw['fat'] ?? '').toString(),
-      tips: ((raw['tips'] as List<dynamic>? ?? const <dynamic>[]).map((e) => e.toString()).toList()),
+      tips: ((raw['tips'] as List<dynamic>? ?? const <dynamic>[])
+          .map((e) => e.toString())
+          .toList()),
       source: (raw['source'] ?? 'local_fallback').toString(),
     );
   }
@@ -3696,4 +4116,3 @@ class _LabDraftReviewItem {
     required this.selected,
   });
 }
-
