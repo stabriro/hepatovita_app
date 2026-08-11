@@ -44,6 +44,10 @@ class MainActivity: FlutterFragmentActivity() {
 						editor.putBoolean("itmain_walk30", walk30)
 						editor.putBoolean("itmain_sun15", sun15)
 						editor.putBoolean("itmain_low_fat_day", lowFatDay)
+						editor.putInt("itmain_med_taken_count", ((args["itmain_med_taken_count"] as? Number)?.toInt()) ?: 0)
+						editor.putInt("itmain_med_total_count", ((args["itmain_med_total_count"] as? Number)?.toInt()) ?: 0)
+						editor.putString("itmain_latest_lab_text", args["itmain_latest_lab_text"] as? String ?: "")
+						editor.putString("itmain_next_action_text", args["itmain_next_action_text"] as? String ?: "")
 						editor.putString("itmain_lang", args["itmain_lang"] as? String ?: "en")
 						editor.apply()
 
@@ -66,16 +70,19 @@ class MainActivity: FlutterFragmentActivity() {
 						val prefs = getSharedPreferences("itmain_widget_prefs", Context.MODE_PRIVATE)
 						val waterDelta = prefs.getInt("itmain_pending_water_delta_ml", 0)
 						val taskCompletions = prefs.getInt("itmain_pending_task_completions", 0)
+						val scanFood = prefs.getBoolean("itmain_pending_scan_food", false)
 
 						prefs.edit()
 							.putInt("itmain_pending_water_delta_ml", 0)
 							.putInt("itmain_pending_task_completions", 0)
+							.putBoolean("itmain_pending_scan_food", false)
 							.apply()
 
 						result.success(
 							mapOf(
 								"waterDeltaMl" to waterDelta,
 								"taskCompletions" to taskCompletions,
+								"scanFood" to scanFood,
 							),
 						)
 					}

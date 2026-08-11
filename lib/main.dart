@@ -1399,6 +1399,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       }
     }
 
+    if (pending.scanFood) {
+      _goToTab(1);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        unawaited(_analyzeMealFromBarcodeImage());
+      });
+    }
+
     _requestHomeWidgetSync();
   }
 

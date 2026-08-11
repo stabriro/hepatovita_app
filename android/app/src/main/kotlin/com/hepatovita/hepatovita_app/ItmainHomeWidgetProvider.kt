@@ -32,12 +32,18 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
         applyMarkNextTask(context)
         refreshAllWidgetInstances(context)
       }
+
+      ACTION_SCAN_FOOD -> {
+        applyScanFood(context)
+        refreshAllWidgetInstances(context)
+      }
     }
   }
 
   companion object {
     const val ACTION_ADD_WATER_250 = "com.itmain.itmain_app.ACTION_ADD_WATER_250"
     const val ACTION_MARK_NEXT_TASK = "com.itmain.itmain_app.ACTION_MARK_NEXT_TASK"
+    const val ACTION_SCAN_FOOD = "com.itmain.itmain_app.ACTION_SCAN_FOOD"
 
     private fun updateWidgets(
       context: Context,
@@ -87,6 +93,7 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
       val tasksLabel = if (lang == "ar") "أدوية اليوم" else "Meds today"
       val quickWater = if (lang == "ar") "+250 ماء" else "+250 mL"
       val quickTask = if (lang == "ar") "أنهِ التالي" else "Next done"
+      val quickScan = if (lang == "ar") "مسح طعام" else "Scan food"
       val scoreLabel = if (lang == "ar") "الالتزام: $score%" else "Score: $score%"
       val streakLabel = if (lang == "ar") "سلسلة $streakCount" else "Streak ${streakCount}d"
       val actionPrefix = if (lang == "ar") "الآن" else "Now"
@@ -117,6 +124,9 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
         val markTaskIntent = Intent(context, ItmainHomeWidgetProvider::class.java).apply {
           action = ACTION_MARK_NEXT_TASK
         }
+        val scanFoodIntent = Intent(context, ItmainHomeWidgetProvider::class.java).apply {
+          action = ACTION_SCAN_FOOD
+        }
 
         val addWaterPendingIntent = PendingIntent.getBroadcast(
           context,
@@ -128,6 +138,12 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
           context,
           widgetId + 2000,
           markTaskIntent,
+          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val scanFoodPendingIntent = PendingIntent.getBroadcast(
+          context,
+          widgetId + 3000,
+          scanFoodIntent,
           PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -143,6 +159,7 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
           setTextViewText(R.id.text_motivation, nextAction)
           setTextViewText(R.id.btn_add_water, quickWater)
           setTextViewText(R.id.btn_mark_task, quickTask)
+          setTextViewText(R.id.btn_scan_food, quickScan)
           setInt(R.id.highlight_bar, "setBackgroundColor", highlightColor)
           setTextColor(R.id.btn_add_water, palette.waterBtnFg)
           setTextColor(R.id.btn_mark_task, palette.taskBtnFg)
@@ -154,6 +171,7 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
           setOnClickPendingIntent(R.id.widget_root, openAppIntent)
           setOnClickPendingIntent(R.id.btn_add_water, addWaterPendingIntent)
           setOnClickPendingIntent(R.id.btn_mark_task, markTaskPendingIntent)
+          setOnClickPendingIntent(R.id.btn_scan_food, scanFoodPendingIntent)
 
           if (!isCompact) {
             setProgressBar(R.id.progress_hydration, 100, hydrationPercent, false)
@@ -460,6 +478,14 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
       editor.putInt("itmain_widget_phase", (prefs.getInt("itmain_widget_phase", 0) + 1) % 6)
 
       editor.apply()
+    }
+
+    private fun applyScanFood(context: Context) {
+      val prefs = context.getSharedPreferences("itmain_widget_prefs", Context.MODE_PRIVATE)
+      prefs.edit()
+        .putBoolean("itmain_pending_scan_food", true)
+        .putInt("itmain_widget_phase", (prefs.getInt("itmain_widget_phase", 0) + 1) % 6)
+        .apply()
     }
 
     fun refreshAllWidgetInstances(context: Context) {

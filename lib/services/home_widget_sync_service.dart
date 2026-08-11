@@ -3,13 +3,15 @@ import 'package:flutter/services.dart';
 class HomeWidgetPendingActions {
   final int waterDeltaMl;
   final int taskCompletions;
+  final bool scanFood;
 
   const HomeWidgetPendingActions({
     required this.waterDeltaMl,
     required this.taskCompletions,
+    required this.scanFood,
   });
 
-  bool get hasActions => waterDeltaMl > 0 || taskCompletions > 0;
+  bool get hasActions => waterDeltaMl > 0 || taskCompletions > 0 || scanFood;
 }
 
 class HomeWidgetSyncService {
@@ -77,9 +79,11 @@ class HomeWidgetSyncService {
         await _channel.invokeMapMethod<String, dynamic>('consumeWidgetActions');
     final waterDelta = (map?['waterDeltaMl'] as num?)?.toInt() ?? 0;
     final taskCompletions = (map?['taskCompletions'] as num?)?.toInt() ?? 0;
+    final scanFood = map?['scanFood'] == true;
     return HomeWidgetPendingActions(
       waterDeltaMl: waterDelta,
       taskCompletions: taskCompletions,
+      scanFood: scanFood,
     );
   }
 }
