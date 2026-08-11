@@ -102,167 +102,204 @@ class LabsTabView extends StatelessWidget {
               yOffset: compact ? 14 : 20,
               child: Container(
                 padding: EdgeInsets.all(cardPadding),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFFE2EDE6)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x120F2E22),
-                blurRadius: 20,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.tr('labs_hub_title'),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
-              ),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Wrap(
-                  spacing: compact ? 6 : 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.end,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: onExportBackup,
-                      icon: const Icon(Icons.download_rounded),
-                      label: Text(l10n.tr('backup')),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: onRestoreBackup,
-                      icon: const Icon(Icons.upload_file_rounded),
-                      label: Text(l10n.tr('restore')),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: onAddLab,
-                      icon: const Icon(Icons.add_rounded),
-                      label: Text(l10n.tr('add_lab')),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1B3B2B),
-                        foregroundColor: Colors.white,
-                      ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: const Color(0xFFE2EDE6)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x120F2E22),
+                      blurRadius: 20,
+                      offset: Offset(0, 8),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                l10n.tr('sqlite_backup_hint'),
-                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-              ),
-              const SizedBox(height: 8),
-              _AlertsPanel(alerts: alerts),
-              const SizedBox(height: 8),
-              _LabsTimelinePanel(
-                events: timelineEvents,
-              ),
-              const SizedBox(height: 6),
-              const SizedBox(height: 4),
-              if (labs.isEmpty)
-                _RichEmptyLabsState(
-                  isAr: isAr,
-                  onAddLab: onAddLab,
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: labs.length,
-                  separatorBuilder: (_, __) => const Divider(height: 20),
-                  itemBuilder: (context, index) {
-                    final lab = labs[index];
-                    final isNormal = lab.status == 'Normal';
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(child: Text(lab.metric, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: isNormal ? Colors.green.shade50 : Colors.amber.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: isNormal ? Colors.green.shade300 : Colors.amber.shade300),
-                                  ),
-                                  child: Text(
-                                    lab.status,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: isNormal ? Colors.green.shade900 : Colors.amber.shade900,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () => onEditLab(index),
-                                  icon: const Icon(Icons.edit_rounded, size: 18),
-                                  constraints: BoxConstraints.tightFor(width: compact ? 32 : 36, height: compact ? 32 : 36),
-                                  padding: EdgeInsets.zero,
-                                  tooltip: l10n.tr('lab_update_tooltip'),
-                                ),
-                                IconButton(
-                                  onPressed: () => onDeleteLab(index),
-                                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                  constraints: BoxConstraints.tightFor(width: compact ? 32 : 36, height: compact ? 32 : 36),
-                                  padding: EdgeInsets.zero,
-                                  tooltip: l10n.tr('lab_delete_tooltip'),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${lab.value} ${lab.unit}',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B3B2B)),
-                            ),
-                            Text(lab.refRange, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: lab.progressVal,
-                            minHeight: 6,
-                            backgroundColor: Colors.grey.shade200,
-                            color: isNormal ? Colors.green : Colors.amber.shade800,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.tr('labs_hub_title'),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Color(0xFF1B3B2B)),
+                    ),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Wrap(
+                        spacing: compact ? 6 : 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.end,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: onExportBackup,
+                            icon: const Icon(Icons.download_rounded),
+                            label: Text(l10n.tr('backup')),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(lab.target, style: const TextStyle(fontSize: 10, color: Colors.black54)),
-                        _LabTrendCard(
-                          lab: lab,
-                          history: historyByMetric[lab.metric] ?? const <LabsTabHistoryItem>[],
-                        ),
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: OutlinedButton.icon(
-                            onPressed: () => onAddResult(index),
-                            icon: const Icon(Icons.show_chart_rounded, size: 16),
-                              label: Text(l10n.tr('add_result')),
+                          OutlinedButton.icon(
+                            onPressed: onRestoreBackup,
+                            icon: const Icon(Icons.upload_file_rounded),
+                            label: Text(l10n.tr('restore')),
                           ),
-                        ),
-                      ],
-                    );
-                  },
+                          ElevatedButton.icon(
+                            onPressed: onAddLab,
+                            icon: const Icon(Icons.add_rounded),
+                            label: Text(l10n.tr('add_lab')),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1B3B2B),
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.tr('sqlite_backup_hint'),
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF64748B)),
+                    ),
+                    const SizedBox(height: 8),
+                    _AlertsPanel(alerts: alerts),
+                    const SizedBox(height: 8),
+                    _LabsTimelinePanel(
+                      events: timelineEvents,
+                    ),
+                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
+                    if (labs.isEmpty)
+                      _RichEmptyLabsState(
+                        isAr: isAr,
+                        onAddLab: onAddLab,
+                      )
+                    else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: labs.length,
+                        separatorBuilder: (_, __) => const Divider(height: 20),
+                        itemBuilder: (context, index) {
+                          final lab = labs[index];
+                          final isNormal = lab.status == 'Normal';
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                      child: Text(lab.metric,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14))),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: isNormal
+                                              ? Colors.green.shade50
+                                              : Colors.amber.shade50,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                              color: isNormal
+                                                  ? Colors.green.shade300
+                                                  : Colors.amber.shade300),
+                                        ),
+                                        child: Text(
+                                          lab.status,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: isNormal
+                                                ? Colors.green.shade900
+                                                : Colors.amber.shade900,
+                                          ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        onPressed: () => onEditLab(index),
+                                        icon: const Icon(Icons.edit_rounded,
+                                            size: 18),
+                                        constraints: BoxConstraints.tightFor(
+                                            width: compact ? 32 : 36,
+                                            height: compact ? 32 : 36),
+                                        padding: EdgeInsets.zero,
+                                        tooltip: l10n.tr('lab_update_tooltip'),
+                                      ),
+                                      IconButton(
+                                        onPressed: () => onDeleteLab(index),
+                                        icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                            size: 18),
+                                        constraints: BoxConstraints.tightFor(
+                                            width: compact ? 32 : 36,
+                                            height: compact ? 32 : 36),
+                                        padding: EdgeInsets.zero,
+                                        tooltip: l10n.tr('lab_delete_tooltip'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${lab.value} ${lab.unit}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Color(0xFF1B3B2B)),
+                                  ),
+                                  Text(lab.refRange,
+                                      style: const TextStyle(
+                                          fontSize: 11, color: Colors.grey)),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: LinearProgressIndicator(
+                                  value: lab.progressVal,
+                                  minHeight: 6,
+                                  backgroundColor: Colors.grey.shade200,
+                                  color: isNormal
+                                      ? Colors.green
+                                      : Colors.amber.shade800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(lab.target,
+                                  style: const TextStyle(
+                                      fontSize: 10, color: Colors.black54)),
+                              _LabTrendCard(
+                                lab: lab,
+                                history: historyByMetric[lab.metric] ??
+                                    const <LabsTabHistoryItem>[],
+                              ),
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: OutlinedButton.icon(
+                                  onPressed: () => onAddResult(index),
+                                  icon: const Icon(Icons.show_chart_rounded,
+                                      size: 16),
+                                  label: Text(l10n.tr('add_result')),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                  ],
                 ),
-            ],
-          ),
               ),
             ),
           ],
@@ -342,77 +379,90 @@ class _LabsTimelinePanel extends StatelessWidget {
               itemBuilder: (context, index) {
                 final event = shown[index];
                 final statusColor = _statusColor(event.status);
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 86,
-                      child: Text(
-                        event.date,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFF475569),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    Column(
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        if (index != shown.length - 1)
-                          Container(
-                            width: 2,
-                            height: 34,
-                            color: const Color(0xFFCBD5E1),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Text(
-                                event.metric,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF0F172A),
-                                ),
+                            Text(
+                              _formatMetricLabel(event.metric),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF0F172A),
+                                height: 1.3,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${event.value} ${event.unit}'.trim(),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF334155),
-                                fontWeight: FontWeight.w600,
-                              ),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    '${event.value} ${event.unit}'.trim(),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFF334155),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  event.date,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Color(0xFF475569),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          if (index != shown.length - 1)
+                            Container(
+                              width: 2,
+                              height: 42,
+                              color: const Color(0xFFCBD5E1),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -430,6 +480,16 @@ class _LabsTimelinePanel extends StatelessWidget {
       return const Color(0xFFF59E0B);
     }
     return const Color(0xFFDC2626);
+  }
+
+  String _formatMetricLabel(String metric) {
+    final normalized = metric
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'(?<=[a-z])(?=[A-Z])'), ' ')
+        .replaceAll(RegExp(r'(?<=[A-Z])(?=[A-Z][a-z])'), ' ')
+        .trim();
+
+    return normalized.isEmpty ? metric : normalized;
   }
 }
 
@@ -464,13 +524,17 @@ class _RichEmptyLabsState extends StatelessWidget {
                   color: const Color(0xFFE2F3EA),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.science_rounded, color: Color(0xFF1B3B2B), size: 22),
+                child: const Icon(Icons.science_rounded,
+                    color: Color(0xFF1B3B2B), size: 22),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   l10n.tr('labs_empty_title'),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1E293B)),
                 ),
               ),
             ],
@@ -483,7 +547,8 @@ class _RichEmptyLabsState extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             l10n.tr('labs_empty_hint'),
-            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), height: 1.5),
+            style: const TextStyle(
+                fontSize: 11, color: Color(0xFF64748B), height: 1.5),
           ),
           const SizedBox(height: 12),
           Align(
@@ -554,7 +619,10 @@ class _AlertsPanel extends StatelessWidget {
         ),
         child: Text(
           l10n.tr('alerts_none'),
-          style: TextStyle(fontSize: 11, color: Colors.green.shade900, fontWeight: FontWeight.w600),
+          style: TextStyle(
+              fontSize: 11,
+              color: Colors.green.shade900,
+              fontWeight: FontWeight.w600),
         ),
       );
     }
@@ -582,12 +650,16 @@ class _AlertsPanel extends StatelessWidget {
                   children: [
                     Text(
                       alert.title,
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: style.foreground),
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: style.foreground),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       alert.message,
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF334155)),
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF334155)),
                     ),
                   ],
                 ),
@@ -661,7 +733,8 @@ class _LabTrendCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isOnTarget ? Colors.green.shade50 : Colors.orange.shade50,
+                  color:
+                      isOnTarget ? Colors.green.shade50 : Colors.orange.shade50,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -669,7 +742,9 @@ class _LabTrendCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: isOnTarget ? Colors.green.shade800 : Colors.orange.shade800,
+                    color: isOnTarget
+                        ? Colors.green.shade800
+                        : Colors.orange.shade800,
                   ),
                 ),
               ),
@@ -678,7 +753,9 @@ class _LabTrendCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isImproving
                       ? Colors.blue.shade50
-                      : (isWorsening ? Colors.red.shade50 : Colors.grey.shade200),
+                      : (isWorsening
+                          ? Colors.red.shade50
+                          : Colors.grey.shade200),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -688,7 +765,9 @@ class _LabTrendCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     color: isImproving
                         ? Colors.blue.shade800
-                        : (isWorsening ? Colors.red.shade800 : Colors.grey.shade700),
+                        : (isWorsening
+                            ? Colors.red.shade800
+                            : Colors.grey.shade700),
                   ),
                 ),
               ),
@@ -700,7 +779,10 @@ class _LabTrendCard extends StatelessWidget {
             children: [
               Text(
                 l10n.tr('trend_history'),
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: Color(0xFF1E293B)),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                    color: Color(0xFF1E293B)),
               ),
               Text(
                 l10n.tr('records_count', args: {'count': '${history.length}'}),
@@ -776,7 +858,9 @@ class _MiniTrendPainter extends CustomPainter {
 
     final path = Path();
     for (int i = 0; i < values.length; i++) {
-      final x = values.length == 1 ? size.width / 2 : (i / (values.length - 1)) * size.width;
+      final x = values.length == 1
+          ? size.width / 2
+          : (i / (values.length - 1)) * size.width;
       final y = size.height - ((values[i] - minVal) / span) * size.height;
 
       if (i == 0) {

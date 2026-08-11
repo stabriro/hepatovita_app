@@ -12,7 +12,8 @@ enum LabEntryMethod {
 class LabEntryFlowController {
   const LabEntryFlowController._();
 
-  static const Map<String, List<String>> _metricAliases = <String, List<String>>{
+  static const Map<String, List<String>> _metricAliases =
+      <String, List<String>>{
     'ALT (SGPT)': <String>['alt', 'sgpt'],
     'AST (SGOT)': <String>['ast', 'sgot'],
     'ALP': <String>['alp', 'alkaline phosphatase'],
@@ -42,12 +43,14 @@ class LabEntryFlowController {
               ListTile(
                 leading: const Icon(Icons.document_scanner_rounded),
                 title: Text(l10n.tr('add_lab_from_image')),
-                onTap: () => Navigator.of(sheetContext).pop(LabEntryMethod.image),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(LabEntryMethod.image),
               ),
               ListTile(
                 leading: const Icon(Icons.edit_note_rounded),
                 title: Text(l10n.tr('add_lab_manual')),
-                onTap: () => Navigator.of(sheetContext).pop(LabEntryMethod.manual),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(LabEntryMethod.manual),
               ),
             ],
           ),
@@ -75,7 +78,8 @@ class LabEntryFlowController {
               ListTile(
                 leading: const Icon(Icons.photo_library_rounded),
                 title: Text(l10n.tr('image_source_gallery')),
-                onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(ImageSource.gallery),
               ),
             ],
           ),
@@ -216,10 +220,16 @@ class LabEntryFlowController {
   static String? _resolveMetricName(String line) {
     final cleaned = line
         .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'(?<=[a-z])(?=[A-Z])'), ' ')
+        .replaceAll(RegExp(r'(?<=[A-Z])(?=[A-Z][a-z])'), ' ')
         .replaceAll(RegExp(r'\s*[:\-–]+\s*$'), '')
         .trim();
 
     if (cleaned.isEmpty) {
+      return null;
+    }
+
+    if (_looksLikeMeasurementNoise(cleaned)) {
       return null;
     }
 
@@ -310,6 +320,10 @@ class LabEntryFlowController {
       return false;
     }
 
+    if (_looksLikeMeasurementNoise(line) || _looksLikeReferenceRange(line)) {
+      return false;
+    }
+
     // Most metric names have letters and are short title-like lines.
     final hasLetters = RegExp(r'[A-Za-z]').hasMatch(line);
     final wordCount = line.split(RegExp(r'\s+')).length;
@@ -329,9 +343,7 @@ class LabEntryFlowController {
 
     final value = numberMatch.group(1) ?? '';
     final unitPart = text.substring(numberMatch.end).trim();
-    final unit = unitPart
-        .replaceAll(RegExp(r'^(\)|\]|\}|,|;)+'), '')
-        .trim();
+    final unit = unitPart.replaceAll(RegExp(r'^(\)|\]|\}|,|;)+'), '').trim();
     return (value, unit);
   }
 
@@ -340,6 +352,39 @@ class LabEntryFlowController {
       r'(<\s*\d+(?:\.\d+)?|>\s*\d+(?:\.\d+)?|\d+(?:\.\d+)?\s*-\s*\d+(?:\.\d+)?)',
       caseSensitive: false,
     ).hasMatch(line);
+  }
+
+  static bool _looksLikeMeasurementNoise(String line) {
+    final normalized = line.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    final lower = normalized.toLowerCase();
+    if (lower.startsWith('value') ||
+        lower.startsWith('result') ||
+        lower.startsWith('range') ||
+        lower.startsWith('reference')) {
+      return true;
+    }
+
+    final unitLike = RegExp(
+      r'\b(?:mmol/?l|mg/?dl|g/?dl|pg/?ml|ng/?ml|u/?ml|iu/?l|miu/?l|pmol/?l|fl|ml|min|sec|%|ratio)\b',
+      caseSensitive: false,
+    ).hasMatch(normalized);
+    final numericMatches =
+        RegExp(r'-?\d+(?:\.\d+)?').allMatches(normalized).length;
+    final punctuationHeavy = RegExp(r'[:<>/=]').hasMatch(normalized);
+
+    if (unitLike && numericMatches >= 1) {
+      return true;
+    }
+
+    if (numericMatches >= 2 && punctuationHeavy) {
+      return true;
+    }
+
+    return false;
   }
 
   static String? _extractDateFromLine(String line) {
