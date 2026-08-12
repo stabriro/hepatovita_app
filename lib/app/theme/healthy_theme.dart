@@ -4,9 +4,9 @@ class HealthyTheme {
   HealthyTheme._();
 
   static const Color primary = Color(0xFF1A4D3B);
-  static const Color secondary = Color(0xFF2F8F6B);
-  static const Color mint = Color(0xFFBDE8D7);
-  static const Color sky = Color(0xFFA7D8F0);
+  static const Color secondary = Color(0xFF2F8F68);
+  static const Color mint = Color(0xFFA5E0D7);
+  static const Color sky = Color(0xFF92BFEF);
   static const Color cream = Color(0xFFF4F8F5);
   static const Color textDark = Color(0xFF11241B);
 

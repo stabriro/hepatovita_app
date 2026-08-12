@@ -135,18 +135,11 @@ class _LanguageSelectorTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFDDE6E0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120F2E22),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,10 +149,11 @@ class _LanguageSelectorTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEF5F0),
+                  color: const Color(0xFFEAF4EF),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.language_rounded, color: Color(0xFF1B3B2B), size: 20),
+                child: const Icon(Icons.language_rounded,
+                    color: Color(0xFF1B3B2B), size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -191,7 +185,7 @@ class _LanguageSelectorTile extends StatelessWidget {
             children: [
               Expanded(
                 child: _LanguageChoiceButton(
-                  title: 'English',
+                  title: l10n.tr('language_option_english'),
                   active: currentLanguage == 'en',
                   onTap: () => onLanguageChanged('en'),
                 ),
@@ -199,9 +193,17 @@ class _LanguageSelectorTile extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _LanguageChoiceButton(
-                  title: 'العربية',
+                  title: l10n.tr('language_option_arabic'),
                   active: currentLanguage == 'ar',
                   onTap: () => onLanguageChanged('ar'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _LanguageChoiceButton(
+                  title: l10n.tr('language_option_tunisian'),
+                  active: currentLanguage == 'ar_TN',
+                  onTap: () => onLanguageChanged('ar_TN'),
                 ),
               ),
             ],
@@ -260,11 +262,11 @@ class _ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
         gradient: const LinearGradient(
-          colors: [Color(0xFF174535), Color(0xFF2A7658), Color(0xFF3A8D6D)],
+          colors: [Color(0xFF133D30), Color(0xFF1A5B45), Color(0xFF2B8B66)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -276,36 +278,25 @@ class _ProfileHeader extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(12),
+          Text(
+            l10n.tr('profile_header_title'),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              height: 0.95,
             ),
-            child: const Icon(Icons.person_rounded, color: Colors.white),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n.tr('profile_header_title'),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  l10n.tr('profile_header_subtitle'),
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ],
+          const SizedBox(height: 6),
+          Text(
+            l10n.tr('profile_header_subtitle'),
+            style: const TextStyle(
+              color: Color(0xC9FFFFFF),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -335,30 +326,16 @@ class _ProfileTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFFDDE6E0)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x120F2E22),
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            ),
-          ],
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEEF5F0),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: const Color(0xFF1B3B2B), size: 20),
-            ),
-            const SizedBox(width: 12),
+            Icon(icon, color: const Color(0xFF1B3B2B), size: 20),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,6 +344,7 @@ class _ProfileTile extends StatelessWidget {
                     title,
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
+                      fontSize: 15,
                       color: Color(0xFF102018),
                     ),
                   ),
@@ -414,25 +392,11 @@ class _ProfileSwitchTile extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFDDE6E0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120F2E22),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEF5F0),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: const Color(0xFF1B3B2B), size: 20),
-          ),
-          const SizedBox(width: 12),
+          Icon(icon, color: const Color(0xFF1B3B2B), size: 20),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,6 +405,7 @@ class _ProfileSwitchTile extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
+                    fontSize: 15,
                     color: Color(0xFF102018),
                   ),
                 ),

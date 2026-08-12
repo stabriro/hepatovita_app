@@ -8,6 +8,7 @@ class AppLocalizations {
   static const supportedLocales = <Locale>[
     Locale('en'),
     Locale('ar'),
+    Locale('ar', 'TN'),
   ];
 
   static const LocalizationsDelegate<AppLocalizations> delegate =
@@ -22,7 +23,7 @@ class AppLocalizations {
     return localization!;
   }
 
-  bool get isAr => locale.languageCode == 'ar';
+  bool get isAr => locale.languageCode.toLowerCase().startsWith('ar');
 
   static const Map<String, Map<String, String>> _values = {
     'en': {
@@ -323,6 +324,13 @@ class AppLocalizations {
       'dashboard_tab_meal_analyzer': 'Meal Analyzer',
       'dashboard_tab_biomarkers': 'Biomarkers',
       'dashboard_tab_guidance': 'Guidance',
+      'language_setup_title': 'Choose your language',
+      'language_setup_subtitle': 'Choose app language',
+      'language_setup_hint':
+          'You can change language later from Profile settings.',
+      'language_option_english': 'English',
+      'language_option_arabic': 'Arabic',
+      'language_option_tunisian': 'Tunisian',
     },
     'ar': {
       'app_title': 'اطمئن',
@@ -608,18 +616,209 @@ class AppLocalizations {
       'dashboard_tab_meal_analyzer': 'مُحلل الوجبات',
       'dashboard_tab_biomarkers': 'الفحوصات',
       'dashboard_tab_guidance': 'الدليل الطبي',
+      'language_setup_title': 'اختر لغة التطبيق',
+      'language_setup_subtitle': 'حدد اللغة المناسبة لك',
+      'language_setup_hint': 'يمكنك تغيير اللغة لاحقا من إعدادات الملف الشخصي.',
+      'language_option_english': 'الإنجليزية',
+      'language_option_arabic': 'العربية',
+      'language_option_tunisian': 'التونسية',
+    },
+    'ar_TN': {
+      'app_title': 'اطمّن',
+      'backup': 'نسخة احتياطية',
+      'restore': 'استرجاع',
+      'add_lab': 'زيد تحليل',
+      'cancel': 'إلغاء',
+      'restore_action': 'استرجاع',
+      'save': 'حفظ',
+      'edit': 'تعديل',
+      'delete': 'مسح',
+      'add_short': 'زيد',
+      'tab_home': 'الرئيسية',
+      'tab_meals': 'الماكْلة',
+      'tab_labs': 'التحاليل',
+      'tab_education': 'التوعية',
+      'tab_meds': 'الدواء',
+      'tab_weekly_plan': 'خطة الأسبوع',
+      'tab_profile': 'البروفايل',
+      'drawer_navigation_title': 'التنقّل',
+      'drawer_navigation_subtitle':
+          'الأقسام الأساسية لتحت، والباقي تلقاهو هنا.',
+      'drawer_primary_section': 'الأقسام الرئيسية',
+      'drawer_secondary_section': 'أدوات ومتابعة',
+      'drawer_quick_access_chip': 'وصول سريع',
+      'drawer_footer_hint': 'استعمل الشريط السفلي باش تبدّل بين الأقسام بسرعة.',
+      'drawer_active_badge': 'مفعّل',
+      'drawer_hint_home': 'ملخص نهارك، السكور، وأشنوة تعمل توة.',
+      'drawer_hint_meals': 'حلّل الماكلة واقرا القيم الغذائية بسرعة.',
+      'drawer_hint_labs': 'تابع التحاليل والنتائج عبر الوقت.',
+      'drawer_hint_education': 'محتوى توعوي ونصائح رعاية.',
+      'drawer_hint_meds': 'نظّم مواعيد الدوا والجرعات والتذكير.',
+      'drawer_hint_weekly_plan': 'راجع خطة الأكل الأسبوعية المقترحة.',
+      'drawer_hint_profile': 'الأمان، النسخ الاحتياطية، اللغة، والإعدادات.',
+      'splash_tag_dynamic_labs': 'تحاليل ديناميكية',
+      'splash_tag_daily_tracking': 'متابعة يومية',
+      'splash_tag_encrypted_backup': 'نسخة احتياطية مشفّرة',
+      'splash_get_started': 'ابدأ توة',
+      'splash_subtitle': 'مرافق ذكي لصحتك الكبدية وروتينك اليومي',
+      'splash_loading_boot': 'قاعدين نجهزولك مساحة المتابعة الصحية...',
+      'splash_loading_security_check':
+          'قاعدين نتحققو من الأمان (PIN/البصمة)...',
+      'splash_skip': 'كمّل',
+      'language_setup_title': 'اختار لغة التطبيق',
+      'language_setup_subtitle': 'حدّد اللغة اللي تناسبك',
+      'language_setup_hint': 'تنجم تبدّل اللغة بعد من إعدادات البروفايل.',
+      'language_option_english': 'English',
+      'language_option_arabic': 'العربية',
+      'language_option_tunisian': 'تونسي',
+      'hero_empty_biomarkers':
+          'مازلت ما ضفتش تحاليل. زيد النتائج متاعك باش يظهرو المؤشرات هنا.',
+      'overview_hydration_title': 'متابعة شربان الماء',
+      'overview_hydration_subtitle': 'بروتوكول تنظيم كثافة الدم',
+      'overview_green_tea_counter': 'عداد كؤوس الشاي الأخضر',
+      'overview_checklist_title': 'قائمة المتابعة الصحية اليومية',
+      'overview_checklist_empty_title': 'زيد نتائج التحاليل باش نخصّص القائمة',
+      'overview_checklist_empty_subtitle':
+          'القسم هذا يتفعّل وقت تضيف على الأقل تحليل واحد، باش المهام تولي مناسبة لحالتك.',
+      'coach_card_title': 'المدرّب الذكي',
+      'coach_card_subtitle': 'نصيحة قصيرة مبنية على آخر تحليل للماكلة متاعك.',
+      'coach_card_loading': 'قاعدين نحضّرو ملخص يفيدك...',
+      'coach_card_empty': 'حلّل ماكلة باش نولّدو نصيحة شخصية هنا.',
+      'coach_card_action': 'حلّل وجبة',
+      'overview_check_vitd_title': 'مكمّل فيتامين د3',
+      'overview_check_vitd_subtitle': 'خذه كيف وصف الطبيب ومع ماكلة مناسبة',
+      'overview_check_walk_title': '30 دقيقة مشي',
+      'overview_check_walk_subtitle': 'يساعد على حرق الدهون في الكبد',
+      'overview_check_sun_title': '15-20 دقيقة شمس الصباح',
+      'overview_check_sun_subtitle': 'يعاون على إنتاج فيتامين د طبيعي',
+      'overview_check_low_fat_title': 'نهار قليل دهون ومقليات',
+      'overview_check_low_fat_subtitle': 'يحمي خلايا الكبد من الإجهاد',
+      'labs_hub_title': 'مركز التحاليل والمؤشرات الحيوية',
+      'labs_timeline_title': 'التسلسل الزمني للتحاليل',
+      'labs_timeline_hint': 'نظرة زمنية لأحدث تغييرات المؤشرات.',
+      'labs_timeline_empty': 'ما فماش أحداث توة. زيد نتيجة تحليل باش تبدأ.',
+      'labs_empty_title': 'ابدا تسلسل التحاليل متاعك',
+      'labs_empty_subtitle':
+          'زيد أول نتيجة تحليل باش تحلّ تتبع الاتجاهات والتنبيهات الذكية.',
+      'labs_empty_hint':
+          '• ابدا بـ ALT ولا AST\n• وبعد زيد القيم الجديدة مع التاريخ',
+      'labs_empty_add_first': 'زيد أول تحليل',
+      'labs_review_title': 'راجع نتائج التحاليل',
+      'labs_review_subtitle':
+          'راجع القيم المستخرجة قبل الحفظ. تنجم تعدّل أي عنصر.',
+      'save_selected': 'حفظ المحدّد',
+      'labs_edit_result_title': 'تعديل نتيجة',
+      'labs_metric_label': 'اسم التحليل',
+      'labs_value_label': 'القيمة',
+      'labs_unit_label': 'الوحدة',
+      'labs_ref_range_label': 'المدى المرجعي',
+      'med_scheduler_title': 'منظّم الأدوية',
+      'med_scheduler_subtitle':
+          'حدّد تذكير يومي لكل دواء وتابع جرعة اليوم بسهولة.',
+      'med_taken_today': 'خديت الجرعة اليوم',
+      'med_mark_taken': 'أكّد أخذ الجرعة',
+      'med_empty_title': 'زيد أول دواء',
+      'med_empty_subtitle': 'اكتب اسم الدواء والجرعة ووقت التذكير.',
+      'med_add_medication': 'زيد دواء',
+      'med_edit_medication': 'عدّل الدواء',
+      'med_delete_title': 'تحب تمسح الدواء؟',
+      'med_delete_subtitle': 'هذا يمسح الدواء وجدولو اليومي.',
+      'med_name_label': 'اسم الدواء',
+      'med_dose_label': 'الجرعة (مثال: 500mg)',
+      'med_reminder_time': 'وقت التذكير',
+      'profile_change_pin_title': 'بدّل PIN',
+      'profile_change_pin_subtitle': 'حدّث رمز القفل متاع التطبيق',
+      'profile_alerts_title': 'تنبيهات حرجة',
+      'profile_alerts_subtitle': 'فعّل أو عطّل تنبيهات التحاليل الحرجة',
+      'profile_biometric_title': 'فتح بالبصمة/الوجه',
+      'profile_biometric_subtitle_enabled':
+          'استعمل البصمة ولا الوجه باش تفتح التطبيق',
+      'profile_biometric_subtitle_unavailable':
+          'البصمة/الوجه موش متوفرة على الجهاز هذا',
+      'profile_backup_section_title': 'النسخ الاحتياطي والخصوصية',
+      'profile_export_pdf_title': 'صدّر ملخّص صحي PDF',
+      'profile_export_pdf_subtitle': 'اعمل تقرير مختصر تشاركو مع فريق الرعاية',
+      'profile_export_backup_title': 'صدّر نسخة احتياطية مشفّرة',
+      'profile_export_backup_subtitle': 'احفظ نسخة آمنة من بياناتك',
+      'profile_restore_backup_title': 'استرجاع نسخة احتياطية',
+      'profile_restore_backup_subtitle':
+          'رجّع بيانات التطبيق من ملف نسخ احتياطي',
+      'profile_lock_now_title': 'سكّر التطبيق توة',
+      'profile_lock_now_subtitle': 'تسكر حالا وتطلب إعادة التحقق',
+      'profile_language_title': 'لغة التطبيق',
+      'profile_language_subtitle': 'بدّل اللغة في أي وقت',
+      'profile_header_title': 'البروفايل والإعدادات',
+      'profile_header_subtitle': 'تحكم في الأمان والتنبيهات',
+      'weekly_plan_title': 'خطة غذائية ذكية للأسبوع',
+      'weekly_plan_regenerate': 'عاود التوليد',
+      'weekly_plan_subtitle':
+          'مبنية على التحاليل باش تنقص المخاطر وتعاونك على الالتزام.',
+      'weekly_plan_empty_text':
+          'ما فماش خطة حاليا. ولّد خطة 7 أيام حسب آخر التحاليل.',
+      'weekly_plan_generate': 'ولّد الخطة',
+      'weekly_plan_last_generated': 'آخر توليد: {date}',
+      'weekly_plan_used_flags': 'الإشارات المعتمدة من التحاليل',
+      'weekly_plan_nutrition_kcal': 'سعرات',
+      'weekly_plan_nutrition_carbs': 'كربوهيدرات',
+      'weekly_plan_nutrition_protein': 'بروتين',
+      'weekly_plan_nutrition_fats': 'دهون',
+      'weekly_plan_nutrition_fiber': 'ألياف',
+      'weekly_plan_saved': 'تم حفظ الخطة الأسبوعية.',
+      'smart_reminder_title': 'تذكير اطمّن الذكي',
+      'smart_reminder_hydration':
+          'الترطيب مازال ناقص بالنسبة للوقت هذا من النهار. زيد ماء توة.',
+      'smart_reminder_checklist':
+          'قائمة المهام اليومية مازالت ناقصة. كمّل الباقي اليوم.',
+      'smart_reminder_low_score':
+          'سكور الالتزام اليوم منخفض. خطوة صغيرة توة تفرق برشة.',
+      'smart_reminder_labs_follow_up':
+          'ما فماش تحديث تحاليل من 14+ يوم. زيد نتيجة متابعة.',
+      'pin_current_label': 'PIN الحالي',
+      'pin_new_label': 'PIN جديد',
+      'pin_confirm_label': 'تأكيد PIN',
+      'pin_confirmation_mismatch': 'تأكيد PIN موش مطابق',
+      'pin_invalid': 'PIN غالط',
+      'pin_current_incorrect': 'PIN الحالي غالط',
+      'pin_new_min_digits': 'PIN الجديد لازم يكون 4 أرقام على الأقل',
+      'pin_updated_success': 'تم تحديث PIN بنجاح',
+      'security_enable_title': 'فعّل أمان التطبيق',
+      'save_and_continue': 'احفظ وكمل',
+      'unlock_app_title': 'افتح التطبيق',
+      'unlock': 'افتح',
+      'forgot_pin': 'نسيت PIN؟',
+      'menu': 'القائمة',
+      'dashboard_header_subtitle': 'مرافقك الصحي',
+      'dashboard_profile_title': 'البروفايل الصحي',
+      'dashboard_targeted_badge': 'مخصص',
+      'dashboard_profile_subtitle':
+          'أهداف علاجية مبنية على نتائج التحاليل متاعك',
+      'dashboard_tab_overview': 'لوحة المتابعة',
+      'dashboard_tab_meal_analyzer': 'محلل الوجبات',
+      'dashboard_tab_biomarkers': 'المؤشرات الحيوية',
+      'dashboard_tab_guidance': 'الإرشادات',
     },
   };
 
   String tr(String key, {Map<String, String>? args}) {
+    final localeKey = _resolveLocaleKey(locale);
+    final localeValues = localeKey == null ? null : _values[localeKey];
     final langValues = _values[locale.languageCode] ?? _values['en']!;
-    var value = langValues[key] ?? _values['en']![key] ?? key;
+    var value =
+        localeValues?[key] ?? langValues[key] ?? _values['en']![key] ?? key;
     if (args != null) {
       args.forEach((k, v) {
         value = value.replaceAll('{$k}', v);
       });
     }
     return value;
+  }
+
+  static String? _resolveLocaleKey(Locale locale) {
+    final countryCode = locale.countryCode;
+    if (countryCode == null || countryCode.isEmpty) {
+      return null;
+    }
+    return '${locale.languageCode}_${countryCode.toUpperCase()}';
   }
 }
 
@@ -629,8 +828,14 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) {
-    return AppLocalizations.supportedLocales
-        .any((l) => l.languageCode == locale.languageCode);
+    final localeKey = AppLocalizations._resolveLocaleKey(locale);
+    return AppLocalizations.supportedLocales.any((l) =>
+        l.languageCode == locale.languageCode &&
+        ((l.countryCode ?? '').toUpperCase() ==
+                (locale.countryCode ?? '').toUpperCase() ||
+            l.countryCode == null ||
+            l.countryCode!.isEmpty ||
+            localeKey == null));
   }
 
   @override

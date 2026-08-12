@@ -37,6 +37,7 @@ import 'features/nutrition_plan/data/free_mealdb_service.dart';
 import 'features/nutrition_plan/domain/weekly_nutrition_rule_engine.dart';
 import 'features/nutrition_plan/presentation/views/weekly_nutrition_plan_tab_view.dart';
 import 'features/profile/presentation/views/profile_tab_view.dart';
+import 'features/splash/presentation/views/app_splash_screen.dart';
 import 'l10n/app_localizations.dart';
 import 'services/local_notification_service.dart';
 import 'services/home_widget_sync_service.dart';
@@ -80,6 +81,27 @@ class _ItmainAppState extends State<ItmainApp> with WidgetsBindingObserver {
   AppLifecycleState? _lastLifecycleState;
   Timer? _splashTimer;
 
+  Locale _localeFromCode(String code) {
+    final normalized = code.replaceAll('-', '_').trim();
+    final parts = normalized.split('_');
+    if (parts.length >= 2 && parts[1].isNotEmpty) {
+      return Locale(parts[0], parts[1].toUpperCase());
+    }
+    return Locale(parts[0]);
+  }
+
+  String _localeToCode(Locale locale) {
+    final countryCode = locale.countryCode;
+    if (countryCode == null || countryCode.isEmpty) {
+      return locale.languageCode;
+    }
+    return '${locale.languageCode}_${countryCode.toUpperCase()}';
+  }
+
+  bool _isArabicLocale(Locale locale) {
+    return locale.languageCode.toLowerCase().startsWith('ar');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -102,7 +124,7 @@ class _ItmainAppState extends State<ItmainApp> with WidgetsBindingObserver {
     }
 
     if (savedLangCode != null && savedLangCode.isNotEmpty) {
-      _locale = Locale(savedLangCode);
+      _locale = _localeFromCode(savedLangCode);
     }
 
     setState(() {
@@ -148,7 +170,7 @@ class _ItmainAppState extends State<ItmainApp> with WidgetsBindingObserver {
     }
 
     setState(() {
-      _locale = Locale(languageCode);
+      _locale = _localeFromCode(languageCode);
       _needsLanguageSetup = false;
     });
   }
@@ -211,7 +233,7 @@ class _ItmainAppState extends State<ItmainApp> with WidgetsBindingObserver {
       return;
     }
 
-    final isAr = _locale.languageCode == 'ar';
+    final isAr = _isArabicLocale(_locale);
     final canUseBiometrics = await _appLockService.canUseBiometrics();
     final hasRecoveryCode = await _appLockService.hasRecoveryCode();
     if (!mounted) {
@@ -472,13 +494,13 @@ class _ItmainAppState extends State<ItmainApp> with WidgetsBindingObserver {
       return;
     }
     setState(() {
-      _locale = Locale(lang);
+      _locale = _localeFromCode(lang);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final isAr = _locale.languageCode == 'ar';
+    final isAr = _isArabicLocale(_locale);
     return MaterialApp(
       navigatorKey: _rootNavigatorKey,
       locale: _locale,
@@ -548,7 +570,7 @@ class _ItmainAppState extends State<ItmainApp> with WidgetsBindingObserver {
                                 )
                               : MainDashboardScreen(
                                   key: const ValueKey('main_dashboard'),
-                                  lang: _locale.languageCode,
+                                  lang: _localeToCode(_locale),
                                   onLanguageChanged: (lang) =>
                                       _toggleLanguage(lang),
                                   onLockRequested: _lockNow,
@@ -624,15 +646,28 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F8F5),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
-              child: Card(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: const Color(0xFFDDEAE3)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x1A1A4D3B),
+                      blurRadius: 28,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(22),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -640,8 +675,10 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
                       Text(
                         l10n.tr('security_enable_title'),
                         style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF11241B),
+                          height: 0.98,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -649,7 +686,11 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
                         widget.isAr
                             ? 'أنشئ PIN لحماية بياناتك الطبية محليا.'
                             : 'Create a PIN to protect your health data locally.',
-                        style: const TextStyle(color: Color(0xFF64748B)),
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       TextField(
@@ -671,17 +712,29 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
                       ),
                       if (widget.canUseBiometric) ...[
                         const SizedBox(height: 12),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(widget.isAr
-                              ? 'تفعيل البصمة/الوجه'
-                              : 'Enable biometric unlock'),
-                          value: _enableBiometric,
-                          onChanged: (value) {
-                            setState(() {
-                              _enableBiometric = value;
-                            });
-                          },
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7FBF8),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFDDEAE3)),
+                          ),
+                          child: SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(widget.isAr
+                                ? 'تفعيل البصمة/الوجه'
+                                : 'Enable biometric unlock'),
+                            value: _enableBiometric,
+                            onChanged: (value) {
+                              setState(() {
+                                _enableBiometric = value;
+                              });
+                            },
+                            activeThumbColor: const Color(0xFF2F8F68),
+                            activeTrackColor:
+                                const Color(0xFFA5E0D7).withValues(alpha: 0.8),
+                          ),
                         ),
                       ],
                       if (_error != null) ...[
@@ -694,6 +747,14 @@ class _SecurityPinSetupScreenState extends State<SecurityPinSetupScreen> {
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: _submit,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF1A4D3B),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(54),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
                         child: Text(l10n.tr('save_and_continue')),
                       ),
                     ],
@@ -774,74 +835,142 @@ class _SecurityUnlockScreenState extends State<SecurityUnlockScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
+      backgroundColor: const Color(0xFFF2F6F3),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+              child: Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: const Color(0xFFDDE6E0)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x1A1A4D3B),
+                      blurRadius: 30,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      l10n.tr('unlock_app_title'),
+                      style: const TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF11241B),
+                        height: 0.95,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.isAr
+                          ? 'أدخل PIN للوصول إلى بياناتك الصحية.'
+                          : 'Enter PIN to access your health data.',
+                      style: const TextStyle(
+                        color: Color(0xFF7A8B83),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: _pinController,
+                      keyboardType: TextInputType.number,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        hintText: 'PIN',
+                        filled: true,
+                        fillColor: const Color(0xFFF5FAF7),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFD8E7DF)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide:
+                              const BorderSide(color: Color(0xFF1F5A45)),
+                        ),
+                      ),
+                      onSubmitted: (_) => _unlockWithPin(),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 10),
                       Text(
-                        l10n.tr('unlock_app_title'),
+                        _error!,
                         style: const TextStyle(
-                          fontSize: 22,
+                          color: Color(0xFFDC2626),
                           fontWeight: FontWeight.w700,
+                          fontSize: 13,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.isAr
-                            ? 'أدخل PIN للوصول إلى بياناتك الصحية.'
-                            : 'Enter your PIN to access your health data.',
-                        style: const TextStyle(color: Color(0xFF64748B)),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _pinController,
-                        keyboardType: TextInputType.number,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'PIN',
-                        ),
-                        onSubmitted: (_) => _unlockWithPin(),
-                      ),
-                      if (_error != null) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          _error!,
-                          style: const TextStyle(color: Color(0xFFB91C1C)),
-                        ),
-                      ],
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: _unlockWithPin,
-                        child: Text(l10n.tr('unlock')),
-                      ),
-                      const SizedBox(height: 6),
-                      TextButton(
-                        onPressed: widget.onForgotPin,
-                        child: Text(
-                          AppLocalizations.of(context).tr('forgot_pin'),
-                        ),
-                      ),
-                      if (widget.enableBiometric) ...[
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          onPressed: _unlockWithBiometric,
-                          icon: const Icon(Icons.fingerprint_rounded),
-                          label: Text(widget.isAr
-                              ? 'استخدام البصمة/الوجه'
-                              : 'Use biometrics'),
-                        ),
-                      ],
                     ],
-                  ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _unlockWithPin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1A4D3B),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: Text(
+                          l10n.tr('unlock'),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: widget.onForgotPin,
+                      child: Text(
+                        AppLocalizations.of(context).tr('forgot_pin'),
+                        style: const TextStyle(
+                          color: Color(0xFF5F6B66),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    if (widget.enableBiometric) ...[
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        height: 54,
+                        child: OutlinedButton.icon(
+                          onPressed: _unlockWithBiometric,
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            side: const BorderSide(color: Color(0xFFD2E5DB)),
+                            foregroundColor: const Color(0xFF2F8F68),
+                          ),
+                          icon: const Icon(Icons.fingerprint_rounded),
+                          label: Text(
+                            widget.isAr
+                                ? 'استخدام البصمة/الوجه'
+                                : 'Use biometrics',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -862,6 +991,7 @@ class LanguageSetupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -902,31 +1032,33 @@ class LanguageSetupScreen extends StatelessWidget {
                         color: Color(0xFF1F5A45),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Choose your language',
+                      Text(
+                        l10n.tr('language_setup_title'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF102018),
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        'اختر لغة التطبيق',
+                      Text(
+                        l10n.tr('language_setup_subtitle'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF1F5A45),
                         ),
                       ),
                       const SizedBox(height: 10),
-                      const Text(
-                        'You can change language later from Profile settings.',
+                      Text(
+                        l10n.tr('language_setup_hint'),
                         textAlign: TextAlign.center,
-                        style:
-                            TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
                       ),
                       const SizedBox(height: 18),
                       ElevatedButton(
@@ -939,8 +1071,9 @@ class LanguageSetupScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text('English',
-                            style: TextStyle(fontWeight: FontWeight.w700)),
+                        child: Text(l10n.tr('language_option_english'),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700)),
                       ),
                       const SizedBox(height: 10),
                       OutlinedButton(
@@ -953,8 +1086,24 @@ class LanguageSetupScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text('العربية',
-                            style: TextStyle(fontWeight: FontWeight.w700)),
+                        child: Text(l10n.tr('language_option_arabic'),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton(
+                        onPressed: () => onLanguageSelected('ar_TN'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF1B3B2B),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: Color(0xFF1F5A45)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(l10n.tr('language_option_tunisian'),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -962,227 +1111,6 @@ class LanguageSetupScreen extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class AppSplashScreen extends StatelessWidget {
-  final bool isAr;
-  final VoidCallback onContinue;
-  final bool isLoadingPhase;
-
-  const AppSplashScreen({
-    super.key,
-    required this.isAr,
-    required this.onContinue,
-    this.isLoadingPhase = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0B231B), Color(0xFF144132), Color(0xFF2F7A5D)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Positioned(
-                top: -90,
-                right: isAr ? null : -70,
-                left: isAr ? -70 : null,
-                child: const _SplashGlow(
-                  size: 220,
-                  color: Color(0x3357D788),
-                ),
-              ),
-              Positioned(
-                bottom: -120,
-                left: isAr ? null : -90,
-                right: isAr ? -90 : null,
-                child: const _SplashGlow(
-                  size: 260,
-                  color: Color(0x2245C8F8),
-                ),
-              ),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Spacer(),
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.92, end: 1),
-                      duration: const Duration(milliseconds: 900),
-                      curve: Curves.easeOutBack,
-                      builder: (context, value, child) {
-                        return Transform.scale(scale: value, child: child);
-                      },
-                      child: Container(
-                        width: 124,
-                        height: 124,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0x66FFFFFF), Color(0x22FFFFFF)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(34),
-                          border: Border.all(color: Colors.white30),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x331BD99B),
-                              blurRadius: 26,
-                              offset: Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.favorite_rounded,
-                          size: 58,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      l10n.tr('app_title'),
-                      textAlign: TextAlign.start,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontFamily: isAr ? 'Cairo' : 'Outfit',
-                        fontSize: 36,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      l10n.tr('splash_subtitle'),
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 15,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _SplashTag(label: l10n.tr('splash_tag_dynamic_labs')),
-                        _SplashTag(label: l10n.tr('splash_tag_daily_tracking')),
-                        _SplashTag(
-                            label: l10n.tr('splash_tag_encrypted_backup')),
-                      ],
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.4,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              isLoadingPhase
-                                  ? l10n.tr('splash_loading_boot')
-                                  : l10n.tr('splash_loading_security_check'),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: isLoadingPhase ? null : onContinue,
-                      child: Text(
-                        l10n.tr('splash_skip'),
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SplashGlow extends StatelessWidget {
-  final double size;
-  final Color color;
-
-  const _SplashGlow({required this.size, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [color, Colors.transparent],
-          stops: const [0.25, 1],
-        ),
-      ),
-    );
-  }
-}
-
-class _SplashTag extends StatelessWidget {
-  final String label;
-
-  const _SplashTag({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
         ),
       ),
     );
@@ -1208,6 +1136,10 @@ class MainDashboardScreen extends StatefulWidget {
 }
 
 class _MainDashboardScreenState extends State<MainDashboardScreen> {
+  bool _isArabicLanguageCode(String code) {
+    return code.toLowerCase().startsWith('ar');
+  }
+
   static const _kReminderHydration = 'hydration';
   static const _kReminderChecklist = 'checklist';
   static const _kReminderLowScore = 'low_score';
@@ -1355,7 +1287,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       return;
     }
 
-    final isAr = widget.lang == 'ar';
+    final isAr = _isArabicLanguageCode(widget.lang);
 
     await HomeWidgetSyncService.syncDashboardSnapshot(
       isAr: isAr,
@@ -1761,7 +1693,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         .toList();
 
     final generated = _weeklyNutritionRuleEngine.generate(
-      isAr: widget.lang == 'ar',
+      isAr: _isArabicLanguageCode(widget.lang),
       labs: signals,
     );
 
@@ -1776,7 +1708,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          widget.lang == 'ar'
+          _isArabicLanguageCode(widget.lang)
               ? 'تم إنشاء الخطة الغذائية الأسبوعية.'
               : 'Weekly nutrition plan generated.',
         ),
@@ -1855,10 +1787,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       }
       await LocalNotificationService.instance.scheduleDailyMedicationReminder(
         id: id,
-        title: widget.lang == 'ar'
+        title: _isArabicLanguageCode(widget.lang)
             ? 'تذكير الدواء: ${med.name}'
             : 'Medication Reminder: ${med.name}',
-        body: widget.lang == 'ar'
+        body: _isArabicLanguageCode(widget.lang)
             ? 'حان وقت جرعة ${med.dose} (${med.timeLabel})'
             : 'Time for ${med.dose} at ${med.timeLabel}',
         hour: med.hour,
@@ -1960,7 +1892,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Future<void> _openMedicationEditor({String? medicationId}) async {
-    final isAr = widget.lang == 'ar';
+    final isAr = _isArabicLanguageCode(widget.lang);
     final l10n = AppLocalizations.of(context);
     final existing = medicationId == null
         ? null
@@ -1978,75 +1910,150 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setInnerState) {
-            return AlertDialog(
-              title: Text(
-                existing == null
-                    ? l10n.tr('med_add_medication')
-                    : l10n.tr('med_edit_medication'),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        labelText: l10n.tr('med_name_label'),
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: const Color(0xFFDDE6E0)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x26113A2B),
+                        blurRadius: 24,
+                        offset: Offset(0, 10),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: doseController,
-                      decoration: InputDecoration(
-                        labelText: l10n.tr('med_dose_label'),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        existing == null
+                            ? l10n.tr('med_add_medication')
+                            : l10n.tr('med_edit_medication'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 28,
+                          color: Color(0xFF173C2F),
+                          height: 0.95,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    InkWell(
-                      onTap: () async {
-                        final picked = await showTimePicker(
-                          context: dialogContext,
-                          initialTime: selectedTime,
-                        );
-                        if (picked == null) {
-                          return;
-                        }
-                        setInnerState(() {
-                          selectedTime = picked;
-                        });
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFCBD5E1)),
-                        ),
-                        child: Text(
-                          '${l10n.tr('med_reminder_time')}: ${selectedTime.format(dialogContext)}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1E293B),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          hintText: l10n.tr('med_name_label'),
+                          filled: true,
+                          fillColor: const Color(0xFFF9FCFA),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFDDE6E0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Color(0xFF1E5F49)),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: doseController,
+                        decoration: InputDecoration(
+                          hintText: l10n.tr('med_dose_label'),
+                          filled: true,
+                          fillColor: const Color(0xFFF9FCFA),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Color(0xFFDDE6E0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide:
+                                const BorderSide(color: Color(0xFF1E5F49)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: dialogContext,
+                            initialTime: selectedTime,
+                          );
+                          if (picked == null) {
+                            return;
+                          }
+                          setInnerState(() {
+                            selectedTime = picked;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFBFE3D1)),
+                            color: const Color(0xFFF9FCFA),
+                          ),
+                          child: Text(
+                            '${l10n.tr('med_reminder_time')}: ${selectedTime.format(dialogContext)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1A3C2E),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.of(dialogContext).pop(false),
+                            child: Text(
+                              l10n.tr('cancel'),
+                              style: const TextStyle(
+                                color: Color(0xFF5F6D66),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            height: 44,
+                            child: ElevatedButton(
+                              onPressed: () =>
+                                  Navigator.of(dialogContext).pop(true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E5F49),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: Text(l10n.tr('save')),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: Text(l10n.tr('cancel')),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(l10n.tr('save')),
-                ),
-              ],
             );
           },
         );
@@ -2265,7 +2272,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     final l10n = AppLocalizations.of(context);
     try {
       final reportPath = await _pdfReportService.generateMedicalReport(
-        isAr: widget.lang == 'ar',
+        isAr: _isArabicLanguageCode(widget.lang),
         score: _dashboardViewModel.score,
         waterAmount: _dashboardViewModel.waterAmount,
         waterGoal: _dashboardViewModel.waterGoal,
@@ -2648,7 +2655,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Future<void> _saveLabDraftBatch(List<LabDraft> drafts) async {
-    final isAr = widget.lang == 'ar';
+    final isAr = _isArabicLanguageCode(widget.lang);
     int savedCount = 0;
 
     for (final draft in drafts) {
@@ -2994,7 +3001,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Future<void> _analyzeMeal(String mealName) async {
     await _dashboardActionsCoordinator.analyzeMeal(
       mealName: mealName,
-      isAr: widget.lang == 'ar',
+      isAr: _isArabicLanguageCode(widget.lang),
       labs: _labsAsMapList(),
     );
   }
@@ -3101,7 +3108,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
   Future<void> _showChangePinDialog() async {
-    final isAr = widget.lang == 'ar';
+    final isAr = _isArabicLanguageCode(widget.lang);
     final l10n = AppLocalizations.of(context);
     final oldPinController = TextEditingController();
     final newPinController = TextEditingController();
@@ -3269,7 +3276,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isAr = widget.lang == 'ar';
+    final isAr = _isArabicLanguageCode(widget.lang);
     final l10n = AppLocalizations.of(context);
     final score = _dashboardViewModel.score;
     const primaryTabOrder = <int>[0, 2, 4, 6];
@@ -3429,7 +3436,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       Text(
                         l10n.tr('drawer_navigation_title'),
                         style: TextStyle(
-                          fontFamily: isAr ? 'Cairo' : 'Outfit',
+                          fontFamily: isAr ? 'Cairo' : 'Plus Jakarta Sans',
                           color: Colors.white,
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
@@ -3800,7 +3807,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         DashboardHeroBiomarkerTag(
           value: _formatLabValue(liverLab),
           label: l10n.tr('hero_metric_liver_enzyme'),
-          color: Colors.amber,
+          color: const Color(0xFFB57A1D),
         ),
       );
     }
@@ -3812,7 +3819,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         DashboardHeroBiomarkerTag(
           value: _formatLabValue(vitaminDLab),
           label: l10n.tr('hero_metric_vitamin_d'),
-          color: Colors.purpleAccent,
+          color: const Color(0xFF92BFEF),
         ),
       );
     }
@@ -3824,7 +3831,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         DashboardHeroBiomarkerTag(
           value: _formatLabValue(hemoglobinLab),
           label: l10n.tr('hero_metric_hemoglobin'),
-          color: Colors.lightBlueAccent,
+          color: const Color(0xFFA5E0D7),
         ),
       );
     }
@@ -4037,21 +4044,21 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   Color _drawerAccentForIndex(int index) {
     switch (index) {
       case 0:
-        return const Color(0xFF2E7D58);
+        return const Color(0xFF2F8F68);
       case 1:
-        return const Color(0xFFC17F2C);
+        return const Color(0xFFB57A1D);
       case 2:
-        return const Color(0xFF2C8F8B);
+        return const Color(0xFF2F8F82);
       case 3:
-        return const Color(0xFF5E7CE2);
+        return const Color(0xFF4B6EA8);
       case 4:
-        return const Color(0xFF7A5AF8);
+        return const Color(0xFF2D6F5A);
       case 5:
-        return const Color(0xFFDA6C5C);
+        return const Color(0xFF5E7A6E);
       case 6:
-        return const Color(0xFF4353A3);
+        return const Color(0xFF3C5B4F);
       default:
-        return const Color(0xFF2E7D58);
+        return const Color(0xFF2F8F68);
     }
   }
 

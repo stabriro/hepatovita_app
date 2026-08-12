@@ -33,46 +33,48 @@ class MedicationTabView extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFE2EDE6)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x120F2E22),
-            blurRadius: 20,
-            offset: Offset(0, 8),
+            blurRadius: 16,
+            offset: Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  l10n.tr('med_scheduler_title'),
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1B3B2B),
-                  ),
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: onAddMedication,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text(l10n.tr('add_short')),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1B3B2B),
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
+          Text(
+            l10n.tr('med_scheduler_title'),
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF173C2F),
+              height: 0.95,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             l10n.tr('med_scheduler_subtitle'),
-            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF6B7A73)),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: onAddMedication,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(l10n.tr('med_add_medication')),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E5F49),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           if (medications.isEmpty)
@@ -90,29 +92,16 @@ class MedicationTabView extends StatelessWidget {
                 final med = medications[index];
                 final isTakenToday = med.takenDayKey == todayKey;
                 return Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFDCE7F3)),
+                    color: const Color(0xFFF8FCFA),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFDCE9E2)),
                   ),
                   child: Column(
                     children: [
                       Row(
                         children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: med.enabled ? const Color(0xFFE0F2FE) : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.medication_liquid_rounded,
-                              color: med.enabled ? const Color(0xFF0369A1) : const Color(0xFF64748B),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,22 +109,43 @@ class MedicationTabView extends StatelessWidget {
                                 Text(
                                   med.name,
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                    color: Color(0xFF0F172A),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 18,
+                                    color: Color(0xFF153629),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${med.dose}  •  ${med.timeLabel}',
-                                  style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                                  '${med.timeLabel} - ${med.dose}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF6A7B74),
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          Switch(
-                            value: med.enabled,
-                            onChanged: (_) => onToggleEnabled(med.id),
+                          InkWell(
+                            onTap: () => onToggleEnabled(med.id),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: med.enabled
+                                    ? const Color(0xFF1E5F49)
+                                    : const Color(0xFFE7EFEA),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.circle,
+                                size: 18,
+                                color: med.enabled
+                                    ? Colors.white
+                                    : const Color(0xFFC0CDC6),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -143,13 +153,19 @@ class MedicationTabView extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: OutlinedButton.icon(
+                            child: OutlinedButton(
                               onPressed: () => onToggleTaken(med.id),
-                              icon: Icon(
-                                isTakenToday ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                                size: 18,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF214F3D),
+                                side:
+                                    const BorderSide(color: Color(0xFFD8E7DF)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 11),
                               ),
-                              label: Text(
+                              child: Text(
                                 isTakenToday
                                     ? l10n.tr('med_taken_today')
                                     : l10n.tr('med_mark_taken'),
@@ -159,12 +175,18 @@ class MedicationTabView extends StatelessWidget {
                           const SizedBox(width: 8),
                           IconButton(
                             onPressed: () => onEditMedication(med.id),
-                            icon: const Icon(Icons.edit_rounded),
+                            icon: const Icon(
+                              Icons.edit_rounded,
+                              color: Color(0xFF376E58),
+                            ),
                             tooltip: l10n.tr('edit'),
                           ),
                           IconButton(
                             onPressed: () => onDeleteMedication(med.id),
-                            icon: const Icon(Icons.delete_outline_rounded),
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: Color(0xFFB45353),
+                            ),
                             tooltip: l10n.tr('delete'),
                           ),
                         ],
@@ -196,9 +218,9 @@ class _EmptyMedicationState extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: const Color(0xFFF8FCFA),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD6E3EE)),
+        border: Border.all(color: const Color(0xFFDCE9E2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,10 +230,11 @@ class _EmptyMedicationState extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
+                  color: const Color(0xFFE7F4EC),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.schedule_rounded, color: Color(0xFF1B5E20), size: 22),
+                child: const Icon(Icons.schedule_rounded,
+                    color: Color(0xFF1E5F49), size: 22),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -237,7 +260,7 @@ class _EmptyMedicationState extends StatelessWidget {
             icon: const Icon(Icons.add_rounded),
             label: Text(l10n.tr('med_add_medication')),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B3B2B),
+              backgroundColor: const Color(0xFF1E5F49),
               foregroundColor: Colors.white,
             ),
           ),

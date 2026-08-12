@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../presenters/lab_alert_presenter.dart';
 
+const _brandPine = Color(0xFF1A4D3B);
+const _brandFern = Color(0xFF2F8F68);
+const _brandMint = Color(0xFFA5E0D7);
+const _brandSky = Color(0xFF92BFEF);
+
 class LabsTabLabItem {
   final String metric;
   final double value;
@@ -147,7 +152,7 @@ class LabsTabView extends StatelessWidget {
                             icon: const Icon(Icons.add_rounded),
                             label: Text(l10n.tr('add_lab')),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1B3B2B),
+                              backgroundColor: _brandPine,
                               foregroundColor: Colors.white,
                             ),
                           ),
@@ -201,14 +206,14 @@ class LabsTabView extends StatelessWidget {
                                             horizontal: 8, vertical: 3),
                                         decoration: BoxDecoration(
                                           color: isNormal
-                                              ? Colors.green.shade50
-                                              : Colors.amber.shade50,
+                                              ? const Color(0xFFEAF5F0)
+                                              : const Color(0xFFFFF6E8),
                                           borderRadius:
                                               BorderRadius.circular(8),
                                           border: Border.all(
                                               color: isNormal
-                                                  ? Colors.green.shade300
-                                                  : Colors.amber.shade300),
+                                                  ? _brandMint
+                                                  : const Color(0xFFF6CD84)),
                                         ),
                                         child: Text(
                                           lab.status,
@@ -216,8 +221,8 @@ class LabsTabView extends StatelessWidget {
                                             fontSize: 10,
                                             fontWeight: FontWeight.bold,
                                             color: isNormal
-                                                ? Colors.green.shade900
-                                                : Colors.amber.shade900,
+                                                ? _brandPine
+                                                : const Color(0xFF9A5F0F),
                                           ),
                                         ),
                                       ),
@@ -271,8 +276,8 @@ class LabsTabView extends StatelessWidget {
                                   minHeight: 6,
                                   backgroundColor: Colors.grey.shade200,
                                   color: isNormal
-                                      ? Colors.green
-                                      : Colors.amber.shade800,
+                                      ? _brandFern
+                                      : const Color(0xFFB57A1D),
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -325,9 +330,9 @@ class _LabsTimelinePanel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: const Color(0xFFF7FBF8),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD6E3EE)),
+        border: Border.all(color: const Color(0xFFDDEAE3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,12 +342,12 @@ class _LabsTimelinePanel extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE2F3EA),
+                  color: const Color(0xFFEAF5F0),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
                   Icons.timeline_rounded,
-                  color: Color(0xFF1B3B2B),
+                  color: _brandPine,
                   size: 18,
                 ),
               ),
@@ -353,7 +358,7 @@ class _LabsTimelinePanel extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1E293B),
+                    color: _brandPine,
                   ),
                 ),
               ),
@@ -400,7 +405,7 @@ class _LabsTimelinePanel extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF0F172A),
+                                color: _brandPine,
                                 height: 1.3,
                               ),
                             ),
@@ -423,7 +428,7 @@ class _LabsTimelinePanel extends StatelessWidget {
                                     '${event.value} ${event.unit}'.trim(),
                                     style: const TextStyle(
                                       fontSize: 11,
-                                      color: Color(0xFF334155),
+                                      color: Color(0xFF2C4238),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -477,7 +482,7 @@ class _LabsTimelinePanel extends StatelessWidget {
       return const Color(0xFF16A34A);
     }
     if (normalized.contains('high') || normalized.contains('low')) {
-      return const Color(0xFFF59E0B);
+      return const Color(0xFFB57A1D);
     }
     return const Color(0xFFDC2626);
   }
@@ -509,9 +514,9 @@ class _RichEmptyLabsState extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: const Color(0xFFF7FBF8),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD6E3EE)),
+        border: Border.all(color: const Color(0xFFDDEAE3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,11 +526,11 @@ class _RichEmptyLabsState extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE2F3EA),
+                  color: const Color(0xFFEAF5F0),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.science_rounded,
-                    color: Color(0xFF1B3B2B), size: 22),
+                    color: _brandPine, size: 22),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -558,7 +563,7 @@ class _RichEmptyLabsState extends StatelessWidget {
               icon: const Icon(Icons.add_rounded),
               label: Text(l10n.tr('labs_empty_add_first')),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1B3B2B),
+                backgroundColor: _brandPine,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -613,16 +618,17 @@ class _AlertsPanel extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.green.shade50,
+          color: const Color(0xFFEAF5F0),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.green.shade200),
+          border: Border.all(color: _brandMint),
         ),
         child: Text(
           l10n.tr('alerts_none'),
-          style: TextStyle(
-              fontSize: 11,
-              color: Colors.green.shade900,
-              fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            fontSize: 11,
+            color: _brandPine,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     }
@@ -720,9 +726,9 @@ class _LabTrendCard extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: const Color(0xFFF7FBF8),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blueGrey.shade100),
+        border: Border.all(color: const Color(0xFFDDEAE3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -764,10 +770,10 @@ class _LabTrendCard extends StatelessWidget {
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: isImproving
-                        ? Colors.blue.shade800
+                        ? const Color(0xFF2D6B8A)
                         : (isWorsening
-                            ? Colors.red.shade800
-                            : Colors.grey.shade700),
+                            ? const Color(0xFF9F1239)
+                            : const Color(0xFF64748B)),
                   ),
                 ),
               ),
@@ -803,7 +809,7 @@ class _LabTrendCard extends StatelessWidget {
               child: CustomPaint(
                 painter: _MiniTrendPainter(
                   values: values,
-                  lineColor: const Color(0xFF0284C7),
+                  lineColor: _brandSky,
                 ),
               ),
             ),

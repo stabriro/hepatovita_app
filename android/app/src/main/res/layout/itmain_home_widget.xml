@@ -16,7 +16,7 @@
             android:id="@+id/highlight_bar"
             android:layout_width="match_parent"
             android:layout_height="4dp"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="10dp"
             android:background="#0EA5E9"
             android:text="" />
 
@@ -38,16 +38,18 @@
                     android:layout_height="wrap_content"
                     android:text="Itmain"
                     android:textColor="#163829"
-                    android:textSize="19sp"
+                    android:textSize="20sp"
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/text_tagline"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:text="Live health snapshot"
-                    android:textColor="#648173"
-                    android:textSize="10sp" />
+                    android:textColor="#4F7B97"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
             <TextView
@@ -85,7 +87,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:background="@drawable/itmain_widget_focus_card"
             android:orientation="vertical"
             android:padding="14dp">
@@ -97,7 +99,7 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:text="Latest lab: No labs yet"
-                android:textColor="#5C7268"
+                android:textColor="#4B6A78"
                 android:textSize="10sp"
                 android:textStyle="bold" />
 
@@ -110,7 +112,7 @@
                 android:maxLines="2"
                 android:text="Next action: keep your healthy day moving"
                 android:textColor="#173629"
-                android:textSize="14sp"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -132,7 +134,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:layout_weight="1"
             android:baselineAligned="false"
             android:orientation="horizontal">
@@ -140,11 +142,11 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_marginEnd="6dp"
+                android:layout_marginEnd="5dp"
                 android:layout_weight="1"
                 android:background="@drawable/itmain_widget_stat_card"
                 android:orientation="vertical"
-                android:padding="14dp">
+                android:padding="12dp">
 
                 <TextView
                     android:id="@+id/text_water_label"
@@ -152,17 +154,17 @@
                     android:layout_height="wrap_content"
                     android:text="Hydration"
                     android:textColor="#678377"
-                    android:textSize="10sp"
+                    android:textSize="9sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/text_water_value"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="6dp"
                     android:text="0/3000 mL"
                     android:textColor="#146D97"
-                    android:textSize="18sp"
+                    android:textSize="17sp"
                     android:textStyle="bold" />
 
                 <ProgressBar
@@ -170,7 +172,7 @@
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
                     android:layout_height="6dp"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="8dp"
                     android:max="100"
                     android:progress="0"
                     android:progressBackgroundTint="#DCEAF1"
@@ -180,11 +182,11 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_marginStart="6dp"
+                android:layout_marginStart="5dp"
                 android:layout_weight="1"
                 android:background="@drawable/itmain_widget_stat_card"
                 android:orientation="vertical"
-                android:padding="14dp">
+                android:padding="12dp">
 
                 <TextView
                     android:id="@+id/text_tasks_label"
@@ -192,33 +194,33 @@
                     android:layout_height="wrap_content"
                     android:text="Meds today"
                     android:textColor="#678377"
-                    android:textSize="10sp"
+                    android:textSize="9sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/text_tasks_value"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="6dp"
                     android:text="0/0"
                     android:textColor="#1F7A53"
-                    android:textSize="18sp"
+                    android:textSize="17sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="8dp"
                     android:text="Quick adherence view"
-                    android:textColor="#8AA095"
-                    android:textSize="10sp" />
+                    android:textColor="#6D8E87"
+                    android:textSize="9sp" />
             </LinearLayout>
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:orientation="horizontal">
 
             <TextView
@@ -226,7 +228,7 @@
                 android:layout_width="0dp"
                 android:layout_height="42dp"
                 android:layout_weight="1"
-                android:layout_marginEnd="6dp"
+                android:layout_marginEnd="4dp"
                 android:background="@drawable/itmain_widget_secondary_action"
                 android:gravity="center"
                 android:paddingHorizontal="8dp"
@@ -240,8 +242,8 @@
                 android:layout_width="0dp"
                 android:layout_height="42dp"
                 android:layout_weight="1"
-                android:layout_marginStart="3dp"
-                android:layout_marginEnd="3dp"
+                android:layout_marginStart="2dp"
+                android:layout_marginEnd="2dp"
                 android:background="@drawable/itmain_widget_primary_action"
                 android:gravity="center"
                 android:paddingHorizontal="8dp"
@@ -255,7 +257,7 @@
                 android:layout_width="0dp"
                 android:layout_height="42dp"
                 android:layout_weight="1"
-                android:layout_marginStart="3dp"
+                android:layout_marginStart="4dp"
                 android:background="@drawable/itmain_widget_secondary_action"
                 android:gravity="center"
                 android:paddingHorizontal="8dp"

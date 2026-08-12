@@ -4,20 +4,20 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#00000000"
-    android:padding="6dp">
+    android:padding="5dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/itmain_widget_surface"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:padding="10dp">
 
         <TextView
             android:id="@+id/highlight_bar"
             android:layout_width="match_parent"
             android:layout_height="4dp"
-            android:layout_marginBottom="10dp"
+            android:layout_marginBottom="8dp"
             android:background="#0EA5E9"
             android:text="" />
 
@@ -34,7 +34,7 @@
                 android:layout_weight="1"
                 android:text="Itmain"
                 android:textColor="#173629"
-                android:textSize="15sp"
+                android:textSize="16sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -56,29 +56,29 @@
             android:id="@+id/text_subtitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="5dp"
             android:ellipsize="end"
             android:maxLines="1"
             android:text="Latest lab: none"
-            android:textColor="#617A70"
+            android:textColor="#4B6A78"
             android:textSize="9sp" />
 
         <TextView
             android:id="@+id/text_motivation"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="5dp"
             android:ellipsize="end"
             android:maxLines="2"
             android:text="Next action: keep momentum"
             android:textColor="#173629"
-            android:textSize="11sp"
+            android:textSize="12sp"
             android:textStyle="bold" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="7dp"
             android:baselineAligned="false"
             android:orientation="horizontal">
 
@@ -86,10 +86,10 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginEnd="4dp"
+                android:layout_marginEnd="3dp"
                 android:background="@drawable/itmain_widget_stat_card"
                 android:orientation="vertical"
-                android:padding="10dp">
+                android:padding="9dp">
 
                 <TextView
                     android:id="@+id/text_water_label"
@@ -115,10 +115,10 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"
+                android:layout_marginStart="3dp"
                 android:background="@drawable/itmain_widget_stat_card"
                 android:orientation="vertical"
-                android:padding="10dp">
+                android:padding="9dp">
 
                 <TextView
                     android:id="@+id/text_tasks_label"
@@ -144,7 +144,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="7dp"
             android:orientation="horizontal">
 
             <TextView

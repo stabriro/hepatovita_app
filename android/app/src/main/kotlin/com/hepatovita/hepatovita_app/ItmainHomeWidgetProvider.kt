@@ -83,6 +83,7 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
       )
 
       val title = if (lang == "ar") "اطمئن" else "Itmain"
+      val tagline = if (lang == "ar") "لقطة يومك الصحية" else "Live health snapshot"
       val subtitlePrefix = if (lang == "ar") "مختبر" else "Lab"
       val subtitle = if (latestLabText.isBlank()) {
         if (lang == "ar") "مختبر: لا توجد تحاليل بعد" else "Lab: No labs yet"
@@ -174,6 +175,7 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
           setOnClickPendingIntent(R.id.btn_scan_food, scanFoodPendingIntent)
 
           if (!isCompact) {
+            setTextViewText(R.id.text_tagline, tagline)
             setProgressBar(R.id.progress_hydration, 100, hydrationPercent, false)
             setTextViewText(R.id.text_score, scoreLabel)
           }
@@ -200,11 +202,11 @@ abstract class BaseItmainHomeWidgetProvider : AppWidgetProvider() {
       val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
 
       return if (hour in 6..11 && hydrationPercent < 45) {
-        Color.parseColor("#F59E0B")
+        Color.parseColor("#F97316")
       } else if (hour >= 18 && checklistDone < 4) {
-        Color.parseColor("#DC2626")
+        Color.parseColor("#F43F5E")
       } else {
-        Color.parseColor("#0EA5E9")
+        Color.parseColor("#22C1F1")
       }
     }
 
